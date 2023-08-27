@@ -8,7 +8,7 @@ export interface User extends mongoose.Document {
   firstName?: string;
   lastName?: string;
   gender?: string;
-  userRole: "CUSTOMER" | "BUSINESS" | "ADMIN";
+  userRole: "CUSTOMER" | "BUSINESS_OWNER" | "BUSINESS_STAFF" | "ADMIN";
   phone?: string;
   address?: string;
   point: number;
@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema({
   userRole: {
     type: String,
     required: true,
-    enum: ["CUSTOMER", "BUSINESS", "ADMIN"],
+    enum: ["CUSTOMER", "BUSINESS_OWNER", "BUSINESS_STAFF", "ADMIN"],
     default: "CUSTOMER",
   },
   phone: { type: String },

@@ -8,27 +8,23 @@ import {
   verifyToken,
 } from "../middlewares/authentication";
 
-interface UserOnboardingFormData {
-  firstName: string;
-  lastName: string;
-  address: string;
-  email: string;
-  gender: string;
-  dob: string;
+interface MerchantOnboardingFormData {
+  businessEmail: string;
 }
 
 const router = express.Router();
 
 // Define authorized roles for the updateMemberInfo route
-const updateUserInfoAuthorizedRoles = ["CUSTOMER", "ADMIN"];
+const updateMerchantInfoAutorizedRoles = ["BUSINESS_OWNER", "ADMIN"];
+
 router.put(
-  "/updateMemberInfo",
+  "/updateMerchantInfo",
   verifyToken,
-  authorize(updateUserInfoAuthorizedRoles),
+  authorize(updateMerchantInfoAutorizedRoles),
   async (req: Request, res, next) => {
     try {
-      const formData: UserOnboardingFormData = req.body;
-      if (!formData.firstName || !formData.lastName) {
+      const formData: MerchantOnboardingFormData = req.body;
+      if (!formData.businessEmail) {
         return res.status(400).json({ error: "Required field is missing." });
       }
 
@@ -42,28 +38,8 @@ router.put(
       }
 
       // Update user's information
-      if (formData.firstName) {
-        existingUser.firstName = formData.firstName;
-      }
-
-      if (formData.lastName) {
-        existingUser.lastName = formData.lastName;
-      }
-
-      if (formData.address) {
-        existingUser.address = formData.address;
-      }
-
-      if (formData.email) {
-        existingUser.email = formData.email;
-      }
-
-      if (formData.gender) {
-        existingUser.gender = formData.gender;
-      }
-
-      if (formData.dob) {
-        existingUser.dob = formData.dob;
+      if (formData.businessEmail) {
+        existingUser.email = formData.businessEmail;
       }
 
       //Save the updated user
@@ -71,21 +47,20 @@ router.put(
 
       res
         .status(200)
-        .json({ message: "Member information updated successfully." });
+        .json({ message: "Business information updated successfully." });
       next();
     } catch (error: any) {
-      console.error("Error updating member information:", error);
+      console.error("Error updating Business information:", error);
       res.status(500).json({
-        error: "An error occurred while updating member information.",
+        error: "An error occurred while updating Business information.",
       });
       next(error);
     }
   }
 );
 
-router.post("/memberLogin", async (req, res, next) => {
+router.post("/merchantLogin", async (req, res, next) => {
   const { idToken } = req.body;
-  console.log(idToken);
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const uid = decodedToken.uid;
@@ -100,6 +75,7 @@ router.post("/memberLogin", async (req, res, next) => {
         googleId: uid,
         email: decodedToken.email,
         phone: decodedToken.phone_number,
+        userRole: "BUSINESS_OWNER",
         profilePicture: decodedToken.picture,
       });
 

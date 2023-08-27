@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import cors, { CorsOptions } from "cors";
 import dotenv from "dotenv";
 import userRoute from "./routes/user";
+import merchantRoute from "./routes/merchant";
 import cookieParser from "cookie-parser";
 
 dotenv.config();
@@ -31,6 +32,7 @@ app.use(cors(corsOptions));
 app.use(cookieParser());
 app.use(express.json());
 app.use("/api", userRoute);
+app.use("/api", merchantRoute);
 
 app.listen(port, () => {
   console.log(`Server started on port ${port}`);
