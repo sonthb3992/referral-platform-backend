@@ -7,6 +7,7 @@ import {
   createToken,
   verifyToken,
 } from "../middlewares/authentication";
+import OutletModel, { Outlet } from "../models/outlet";
 
 interface MerchantOnboardingFormData {
   businessEmail: string;
@@ -15,12 +16,12 @@ interface MerchantOnboardingFormData {
 const router = express.Router();
 
 // Define authorized roles for the updateMemberInfo route
-const updateMerchantInfoAutorizedRoles = ["BUSINESS_OWNER", "ADMIN"];
+const businessOwnerAuthorizedRoles = ["BUSINESS_OWNER", "ADMIN"];
 
 router.put(
   "/updateMerchantInfo",
   verifyToken,
-  authorize(updateMerchantInfoAutorizedRoles),
+  authorize(businessOwnerAuthorizedRoles),
   async (req: Request, res, next) => {
     try {
       const formData: MerchantOnboardingFormData = req.body;
@@ -100,5 +101,52 @@ router.post("/merchantLogin", async (req, res, next) => {
     next(error);
   }
 });
+
+router.post(
+  "/outlet",
+  verifyToken,
+  authorize(businessOwnerAuthorizedRoles),
+  async (req: Request, res, next) => {
+    try {
+      const formData: Outlet = req.body;
+      if (!formData.name || !formData.address) {
+        return res.status(400).json({ error: "Required field is missing." });
+      }
+
+      // Check if an outlet with the same user and name (case-insensitive) already exists
+      const existingOutlet = await OutletModel.findOne({
+        userId: req.user._id,
+        name: { $regex: new RegExp(`^${formData.name}$`, "i") },
+      });
+
+      if (existingOutlet) {
+        return res
+          .status(409)
+          .json({ error: "Outlet with same name already exists." });
+      }
+
+      // Create a new outlet
+      const newOutlet = new OutletModel({
+        userId: req.user._id,
+        name: formData.name,
+        address: formData.address ?? "",
+        phone: formData.phone,
+        imageUrl: formData.imageUrl,
+      });
+
+      await newOutlet.save();
+
+      res
+        .status(201)
+        .json({ message: "Outlet created successfully.", outlet: newOutlet });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ error: "An error occurred while creating the outlet." });
+      console.error("Error creating outlet:", error);
+      next(error);
+    }
+  }
+);
 
 export default router;
