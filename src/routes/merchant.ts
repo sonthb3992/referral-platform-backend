@@ -60,48 +60,6 @@ router.put(
   }
 );
 
-router.post("/merchantLogin", async (req, res, next) => {
-  const { idToken } = req.body;
-  try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const uid = decodedToken.uid;
-
-    // Check if this user already exists in the database
-    let user = await UserModel.findOne({ googleId: uid });
-    let newUser = false;
-
-    if (!user) {
-      //User not existed then create new user
-      user = new UserModel({
-        googleId: uid,
-        email: decodedToken.email,
-        phone: decodedToken.phone_number,
-        userRole: "BUSINESS_OWNER",
-        profilePicture: decodedToken.picture,
-      });
-
-      // Save the user to the database
-      await user.save();
-      newUser = true;
-    }
-
-    const token = createToken(user.id, user.googleId, user.email, user.phone);
-    res
-      .cookie("jwt", token, {
-        httpOnly: true,
-        secure: false, // Set to true in production if using HTTPS
-      })
-      .status(newUser ? 201 : 200)
-      .json({ message: "Login successful" });
-
-    next();
-  } catch (error) {
-    res.status(401).json({ error: "Invalid token.", litteral: error });
-    console.log("Invalid token");
-    next(error);
-  }
-});
-
 router.post(
   "/outlet",
   verifyToken,
@@ -144,6 +102,55 @@ router.post(
         .status(500)
         .json({ error: "An error occurred while creating the outlet." });
       console.error("Error creating outlet:", error);
+      next(error);
+    }
+  }
+);
+
+router.get(
+  "/outlet",
+  verifyToken,
+  authorize(businessOwnerAuthorizedRoles),
+  async (req: Request, res, next) => {
+    try {
+      // Retrieve all outlets for the authenticated user
+      const outlets = await OutletModel.find({ userId: req.user._id });
+
+      res.status(200).json({ outlets });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ error: "An error occurred while fetching outlets." });
+      console.error("Error fetching outlets:", error);
+      next(error);
+    }
+  }
+);
+
+router.get(
+  "/outlets/:outletId",
+  verifyToken,
+  authorize(businessOwnerAuthorizedRoles),
+  async (req: Request, res, next) => {
+    try {
+      const outletId = req.params.outletId;
+
+      // Retrieve the outlet based on outletId and userId
+      const outlet = await OutletModel.findOne({
+        _id: outletId,
+        userId: req.user._id,
+      });
+
+      if (!outlet) {
+        return res.status(404).json({ error: "Outlet not found." });
+      }
+
+      res.status(200).json({ outlet });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ error: "An error occurred while fetching the outlet." });
+      console.error("Error fetching outlet:", error);
       next(error);
     }
   }

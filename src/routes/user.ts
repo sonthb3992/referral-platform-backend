@@ -83,27 +83,28 @@ router.put(
   }
 );
 
-router.post("/memberLogin", async (req, res, next) => {
+const handleLogin = async (req, res, next, userRole?: string) => {
   const { idToken } = req.body;
-  console.log(idToken);
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const uid = decodedToken.uid;
 
+    const filter = userRole
+      ? { googleId: uid, userRole: userRole }
+      : { googleId: uid };
+
     // Check if this user already exists in the database
-    let user = await UserModel.findOne({ googleId: uid });
+    let user = await UserModel.findOne(filter);
     let newUser = false;
 
     if (!user) {
-      //User not existed then create new user
       user = new UserModel({
         googleId: uid,
         email: decodedToken.email,
         phone: decodedToken.phone_number,
+        userRole,
         profilePicture: decodedToken.picture,
       });
-
-      // Save the user to the database
       await user.save();
       newUser = true;
     }
@@ -112,17 +113,32 @@ router.post("/memberLogin", async (req, res, next) => {
     res
       .cookie("jwt", token, {
         httpOnly: true,
-        secure: false, // Set to true in production if using HTTPS
+        secure: false,
       })
       .status(newUser ? 201 : 200)
-      .json({ message: "Login successful" });
+      .json({
+        user,
+        tokenTime: 3600,
+      });
 
     next();
   } catch (error) {
-    res.status(401).json({ error: "Invalid token.", litteral: error });
+    res.status(401).json({ error: "Invalid token.", literal: error });
     console.log("Invalid token");
     next(error);
   }
+};
+
+router.post("/merchantLogin", async (req, res, next) => {
+  await handleLogin(req, res, next, "BUSINESS_OWNER");
+});
+
+router.post("/memberLogin", async (req, res, next) => {
+  await handleLogin(req, res, next, "CUSTOMER");
+});
+
+router.post("/login", async (req, res, next) => {
+  await handleLogin(req, res, next, undefined);
 });
 
 export default router;

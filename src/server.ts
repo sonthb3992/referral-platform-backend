@@ -15,7 +15,7 @@ const port = process.env.PORT || 3001;
 
 // Configure CORS to allow requests from http://localhost:3000
 const corsOptions: CorsOptions = {
-  origin: "http://localhost:3000",
+  origin: ["http://localhost:3000", "http://192.168.1.209:3000"],
   credentials: true,
 };
 

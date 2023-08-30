@@ -4,7 +4,6 @@ import mongoose from "mongoose";
 export interface User extends mongoose.Document {
   googleId: string;
   email?: string;
-  password?: string;
   firstName?: string;
   lastName?: string;
   gender?: string;
@@ -19,7 +18,6 @@ export interface User extends mongoose.Document {
 const userSchema = new mongoose.Schema({
   googleId: { type: String, unique: true, required: true },
   email: { type: String },
-  password: { type: String },
   firstName: { type: String },
   lastName: { type: String },
   gender: { type: String },
