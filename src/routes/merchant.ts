@@ -1,6 +1,6 @@
 import express from "express";
 import admin from "../firebase/admin";
-import { UserModel } from "../models/user";
+import { UserModel, businessOwnerAuthorizedRoles } from "../models/user";
 import { Request } from "../types/custom";
 import {
   authorize,
@@ -14,9 +14,6 @@ interface MerchantOnboardingFormData {
 }
 
 const router = express.Router();
-
-// Define authorized roles for the updateMemberInfo route
-const businessOwnerAuthorizedRoles = ["BUSINESS_OWNER", "ADMIN"];
 
 router.put(
   "/updateMerchantInfo",

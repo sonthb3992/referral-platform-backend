@@ -13,6 +13,7 @@ export interface User extends mongoose.Document {
   point: number;
   profilePicture?: string;
   dob?: string;
+  savedCodes: string[];
 }
 
 const userSchema = new mongoose.Schema({
@@ -35,3 +36,4 @@ const userSchema = new mongoose.Schema({
 });
 
 export const UserModel = mongoose.model<User>("User", userSchema);
+export const businessOwnerAuthorizedRoles = ["BUSINESS_OWNER", "ADMIN"];
