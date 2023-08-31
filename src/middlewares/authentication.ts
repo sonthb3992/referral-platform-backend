@@ -10,6 +10,7 @@ export interface TokenPayload {
   googleId: string;
   email: string;
   phone: string;
+  iat: number;
 }
 
 const createToken = (
@@ -18,15 +19,17 @@ const createToken = (
   email: string,
   phone: string
 ): string => {
+  const currentTime = Math.floor(Date.now() / 1000);
   const tokenPayload: TokenPayload = {
     userId: userId,
     googleId: googleId,
     email: email,
     phone: phone,
+    iat: currentTime,
   };
   // Create a JWT token
   const token = jwt.sign(tokenPayload, process.env.SECRET_KEY, {
-    expiresIn: "1h", // Token will expire in 1 hour
+    expiresIn: process.env.TOKEN_TIME || 3600,
   });
   return token;
 };
@@ -40,25 +43,34 @@ async function verifyToken(req: Request, res: Response, next: NextFunction) {
   }
 
   try {
-    // Extract the token without "Bearer"
-    const tokenWithoutBearer = token.replace("Bearer ", "");
-
     // Verify the token using jwt.verify and wrap it in a Promise
     const decoded: any = await new Promise((resolve, reject) => {
-      jwt.verify(
-        tokenWithoutBearer,
-        process.env.SECRET_KEY || "",
-        (err, decoded) => {
-          if (err) {
-            logger.error("Token verification error:", err);
-            reject(err);
-          } else {
-            resolve(decoded);
-          }
+      jwt.verify(token, process.env.SECRET_KEY || "", (err, decoded) => {
+        if (err) {
+          logger.error("Token verification error:", err);
+          reject(err);
+        } else {
+          resolve(decoded);
         }
-      );
+      });
     });
 
+    const currentTime = Math.floor(Date.now() / 1000);
+    const tokenIssuedAtTime = decoded.iat;
+    const expirationThreshold = 5 * 60;
+    if (currentTime - tokenIssuedAtTime >= expirationThreshold) {
+      const refreshedToken = createToken(
+        decoded.userId,
+        decoded.googleId,
+        decoded.email,
+        decoded.phone
+      );
+      res.cookie("jwt", refreshedToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+      });
+    }
     req.userId = decoded.userId;
 
     // Find the user based on the decoded userId
