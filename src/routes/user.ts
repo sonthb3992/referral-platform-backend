@@ -113,7 +113,8 @@ const handleLogin = async (req, res, next, userRole?: string) => {
     res
       .cookie("jwt", token, {
         httpOnly: true,
-        secure: false,
+        secure: true,
+        sameSite: "none",
       })
       .status(newUser ? 201 : 200)
       .json({

@@ -39,6 +39,8 @@ router.post(
         minQuantity: formData.minQuantity || 0,
         maxQuantity: formData.maxQuantity || 1,
         value: formData.value,
+        referralReward: formData.referralReward,
+        referrerReward: formData.referrerReward,
         active: formData.active || true,
         redemptionMethod: formData.redemptionMethod || "",
         maxParticipants: formData.maxParticipants || undefined,
@@ -90,3 +92,5 @@ router.get(
     }
   }
 );
+
+export default router;
