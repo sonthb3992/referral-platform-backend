@@ -5,6 +5,7 @@ export interface Outlet extends mongoose.Document {
   name: string;
   address: string;
   phone?: string;
+  desc?: string;
   imageUrl?: string;
 }
 
@@ -17,6 +18,7 @@ const outletSchema: Schema<Outlet> = new Schema<Outlet>({
   name: { type: String, required: true },
   address: { type: String, required: true },
   phone: { type: String },
+  desc: { type: String },
   imageUrl: { type: String },
 });
 

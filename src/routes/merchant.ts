@@ -86,6 +86,7 @@ router.post(
         name: formData.name,
         address: formData.address ?? "",
         phone: formData.phone,
+        desc: formData.desc,
         imageUrl: formData.imageUrl,
       });
 
@@ -125,7 +126,7 @@ router.get(
 );
 
 router.get(
-  "/outlets/:outletId",
+  "/outlet/:outletId",
   verifyToken,
   authorize(businessOwnerAuthorizedRoles),
   async (req: Request, res, next) => {
