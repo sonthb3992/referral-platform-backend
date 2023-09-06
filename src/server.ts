@@ -61,10 +61,10 @@ const credentials = {
   cert: certificate,
 };
 
-if (process.env.NODE_ENV === "dev") {
+if (process.env.NODE_ENV === "local") {
   app.listen(port);
 }
-if (process.env.NODE_ENV === "prod") {
+if (process.env.NODE_ENV === "online") {
   const httpsServer = https.createServer(credentials, app);
   httpsServer.listen(port, () => {
     console.log(`HTTPS server started on port ${port}`);
