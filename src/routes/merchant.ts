@@ -125,6 +125,27 @@ router.get(
   }
 );
 
+router.get("/outletName/:outletId", async (req, res, next) => {
+  try {
+    const outletId = req.params.outletId;
+    const outlet = await OutletModel.findOne({
+      _id: outletId,
+    });
+
+    if (!outlet) {
+      return res.status(404).json({ error: "Outlet not found." });
+    }
+
+    res.status(200).json({ outletName: outlet.name });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: "An error occurred while fetching the outlet." });
+    console.error("Error fetching outlet:", error);
+    next(error);
+  }
+});
+
 router.get(
   "/outlet/:outletId",
   verifyToken,
