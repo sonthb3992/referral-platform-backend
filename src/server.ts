@@ -60,7 +60,13 @@ const credentials = {
   key: privateKey,
   cert: certificate,
 };
-const httpsServer = https.createServer(credentials, app);
-httpsServer.listen(port, () => {
-  console.log(`HTTPS server started on port ${port}`);
-});
+
+if (process.env.NODE_ENV === "dev") {
+  app.listen(port);
+}
+if (process.env.NODE_ENV === "prod") {
+  const httpsServer = https.createServer(credentials, app);
+  httpsServer.listen(port, () => {
+    console.log(`HTTPS server started on port ${port}`);
+  });
+}

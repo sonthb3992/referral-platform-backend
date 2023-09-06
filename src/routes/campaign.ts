@@ -93,4 +93,36 @@ router.get(
   }
 );
 
+router.get(
+  "/getCampaignsOfOutlet",
+  verifyToken,
+  authorize(businessOwnerAuthorizedRoles),
+  async (req: Request, res, next) => {
+    try {
+      const userId = req.user._id;
+      const { active, outletId } = req.query; // Check if "active" query parameter is provided
+      if (!outletId) {
+        return res.status(400).json({ error: "Outlet Id is required." });
+      }
+
+      let campaigns =
+        active === "true"
+          ? await CampaignModel.find({
+              userId,
+              outlets: outletId,
+              active: true,
+            })
+          : await CampaignModel.find({ userId, outlets: outletId });
+
+      res.status(200).json({ campaigns });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ error: "An error occurred while fetching campaigns." });
+      console.error("Error fetching campaigns:", error);
+      next(error);
+    }
+  }
+);
+
 export default router;
