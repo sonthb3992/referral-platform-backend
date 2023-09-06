@@ -6,6 +6,7 @@ import userRoute from "./routes/user";
 import merchantRoute from "./routes/merchant";
 import pingRoute from "./routes/ping";
 import campaignRoute from "./routes/campaign";
+import referralRoute from "./routes/referral";
 import cookieParser from "cookie-parser";
 import fs from "fs";
 import https from "https";
@@ -49,6 +50,7 @@ app.use(express.json());
 app.use("/api", userRoute);
 app.use("/api", merchantRoute);
 app.use("/api", campaignRoute);
+app.use("/api", referralRoute);
 
 app.use("/api", pingRoute);
 
