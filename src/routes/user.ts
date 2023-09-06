@@ -83,18 +83,14 @@ router.put(
   }
 );
 
-const handleLogin = async (req, res, next, userRole?: string) => {
+const handleLogin = async (req, res, next, userRole: string) => {
   const { idToken } = req.body;
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const uid = decodedToken.uid;
 
-    const filter = userRole
-      ? { googleId: uid, userRole: userRole }
-      : { googleId: uid };
-
     // Check if this user already exists in the database
-    let user = await UserModel.findOne(filter);
+    let user = await UserModel.findOne({ googleId: uid, userRole: userRole });
     let newUser = false;
 
     if (!user) {
@@ -136,10 +132,6 @@ router.post("/merchantLogin", async (req, res, next) => {
 
 router.post("/memberLogin", async (req, res, next) => {
   await handleLogin(req, res, next, "CUSTOMER");
-});
-
-router.post("/login", async (req, res, next) => {
-  await handleLogin(req, res, next, undefined);
 });
 
 export default router;
