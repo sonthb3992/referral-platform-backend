@@ -13,7 +13,7 @@ export interface User extends mongoose.Document {
   point: number;
   profilePicture?: string;
   dob?: string;
-  savedCodes: string[];
+  savedReferrals: string[];
 }
 
 const userSchema = new mongoose.Schema(
@@ -34,6 +34,7 @@ const userSchema = new mongoose.Schema(
     point: { type: Number, default: 0 },
     profilePicture: { type: String },
     dob: { type: String },
+    savedReferrals: [{ type: String }],
   },
   {
     timestamps: {
