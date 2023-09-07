@@ -66,6 +66,69 @@ router.post(
   }
 );
 
+router.put(
+  "/campaign",
+  verifyToken,
+  authorize(businessOwnerAuthorizedRoles),
+  async (req, res, next) => {
+    try {
+      // Extract campaign data from the request body
+      const formData: Campaign = req.body;
+
+      // Check if required fields are missing
+      if (!formData.name || !formData.description || !formData.termsAndConditions) {
+        return res.status(400).json({ error: "Required fields are missing." });
+      }
+
+      // Find the campaign to update by its ID
+      const updatedCampaign = await CampaignModel.findOneAndUpdate(
+        { _id: formData._id },
+        {
+          // Update campaign properties with new data
+          $set: {
+            name: formData.name,
+            description: formData.description,
+            termsAndConditions: formData.termsAndConditions,
+            type: formData.type,
+            startDate: formData.startDate,
+            endDate: formData.endDate,
+            outlets: formData.outlets || [],
+            minQuantity: formData.minQuantity || 0,
+            maxQuantity: formData.maxQuantity || 1,
+            value: formData.value,
+            referralReward: formData.referralReward,
+            referrerReward: formData.referrerReward,
+            active: formData.active || true,
+            redemptionMethod: formData.redemptionMethod || "",
+            maxParticipants: formData.maxParticipants || undefined,
+            categories: formData.categories || [],
+            targetAudience: formData.targetAudience || "",
+            priority: formData.priority || undefined,
+            campaignImage: formData.campaignImage || "",
+          },
+        },
+        { new: true } // Return the updated document
+      );
+
+      // Check if the campaign was not found
+      if (!updatedCampaign) {
+        return res.status(400).json({ error: "Campaign not found." });
+      }
+
+      res.status(201).json({
+        message: "Campaign updated successfully.",
+        campaign: updatedCampaign,
+      });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ error: "An error occurred while updating the campaign." });
+      console.error("Error updating campaign:", error);
+      next(error);
+    }
+  }
+);
+
 router.get(
   "/campaign",
   verifyToken,

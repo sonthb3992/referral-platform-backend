@@ -46,3 +46,4 @@ const userSchema = new mongoose.Schema(
 userSchema.set("timestamps", true);
 export const UserModel = mongoose.model<User>("User", userSchema);
 export const businessOwnerAuthorizedRoles = ["BUSINESS_OWNER", "ADMIN"];
+export const customerAuthorizedRoles = ["CUSTOMER", "BUSINESS_OWNER", "ADMIN"];
