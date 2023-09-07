@@ -18,6 +18,20 @@ interface UserOnboardingFormData {
 }
 
 const router = express.Router();
+router.get(
+  "/userinfo",
+  verifyToken,
+  authorize(["CUSTOMER"]),
+  async (req: Request, res, next) => {
+    try {
+      const user = req.user;
+      console.log(user);
+      res.status(200).json(user);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 
 // Define authorized roles for the updateMemberInfo route
 const updateUserInfoAuthorizedRoles = ["CUSTOMER", "ADMIN"];
