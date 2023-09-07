@@ -26,6 +26,7 @@
     "cookie-parser": "^1.4.6",
     "firebase-admin": "^11.10.1",
     "mongodb": "^5.7.0",
+    "nodemon": "^3.0.1",
     "winston": "^3.10.0"
   }
 }
