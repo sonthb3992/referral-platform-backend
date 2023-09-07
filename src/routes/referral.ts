@@ -38,11 +38,47 @@ router.post(
       res.status(201).json({
         message: "User code created successfully",
         referral: newReferral,
+        campaign: campaign,
       });
     } catch (err) {
       next(err);
     }
   }
 );
+
+router.get(
+  "/referral/:referralId",
+  verifyToken,
+  authorize(customerAuthorizedRoles),
+  async (req: Request, res: Response, next: NextFunction) => {
+    // Destructure the fields from the request body
+    const { referralId } = req.params as { referralId: string };
+
+    try {
+      // Check validate the referralId
+      const referral = await ReferralModel.findById(referralId);
+      if (!referral) {
+        return res.status(400).json({
+          message: "Invalid Referral Id",
+        });
+      }
+
+      const campaign = await CampaignModel.findById(referral.campaignId);
+      if (!campaign) {
+        return res.status(400).json({
+          message: "Invalid Campaign Id",
+        });
+      }
+
+      res.status(200).json({
+        message: "Referral retrieved successfully",
+        referral: referral,
+        campaign: campaign,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+)
 
 export default router;
