@@ -149,15 +149,13 @@ router.get("/outletName/:outletId", async (req, res, next) => {
 router.get(
   "/outlet/:outletId",
   verifyToken,
-  authorize(businessOwnerAuthorizedRoles),
+  authorize([...businessOwnerAuthorizedRoles, "CUSTOMER"]),
   async (req: Request, res, next) => {
     try {
       const outletId = req.params.outletId;
 
-      // Retrieve the outlet based on outletId and userId
       const outlet = await OutletModel.findOne({
         _id: outletId,
-        userId: req.user._id,
       });
 
       if (!outlet) {

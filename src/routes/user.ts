@@ -148,4 +148,15 @@ router.post("/memberLogin", async (req, res, next) => {
   await handleLogin(req, res, next, "CUSTOMER");
 });
 
+router.get("/logout", verifyToken, async (req, res, next) => {
+  try {
+    res.clearCookie("jwt").status(200).json("success");
+    next();
+  } catch (error) {
+    res.status(401).json({ error: "Invalid token.", literal: error });
+    console.log("Invalid token");
+    next(error);
+  }
+});
+
 export default router;

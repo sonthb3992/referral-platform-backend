@@ -76,7 +76,11 @@ router.put(
       const formData: Campaign = req.body;
 
       // Check if required fields are missing
-      if (!formData.name || !formData.description || !formData.termsAndConditions) {
+      if (
+        !formData.name ||
+        !formData.description ||
+        !formData.termsAndConditions
+      ) {
         return res.status(400).json({ error: "Required fields are missing." });
       }
 
@@ -159,7 +163,7 @@ router.get(
 router.get(
   "/getCampaignsOfOutlet",
   verifyToken,
-  authorize(businessOwnerAuthorizedRoles),
+  authorize(["CUSTOMER"]),
   async (req: Request, res, next) => {
     try {
       const userId = req.user._id;
