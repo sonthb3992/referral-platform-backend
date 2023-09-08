@@ -1,12 +1,12 @@
-import express from "express";
 import admin from "../firebase/admin";
-import { UserModel } from "../models/user";
-import { Request } from "../types/custom";
 import {
   authorize,
   createToken,
   verifyToken,
 } from "../middlewares/authentication";
+import ReferralModel from "../models/referral";
+import { UserModel, customerAuthorizedRoles } from "../models/user";
+import express, { Request, Response, NextFunction } from "express";
 
 interface UserOnboardingFormData {
   firstName: string;
@@ -148,6 +148,7 @@ router.post("/memberLogin", async (req, res, next) => {
   await handleLogin(req, res, next, "CUSTOMER");
 });
 
+
 router.get("/logout", verifyToken, async (req, res, next) => {
   try {
     res.clearCookie("jwt").status(200).json("success");
@@ -159,4 +160,49 @@ router.get("/logout", verifyToken, async (req, res, next) => {
   }
 });
 
+router.post(
+  "/save/referral/:referralId",
+  verifyToken,
+  authorize(customerAuthorizedRoles),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = req.user;
+      const { referralId } = req.params as { referralId: string };
+      
+      const referral = await ReferralModel.findById(referralId);
+      if (!referral) {
+        return res.status(400).json({
+          message: "Invalid Referral Id",
+        });
+      }
+
+      // Assuming that `user.savedReferrals` is an array, you can push `referralId` into it.
+      if (user.savedReferrals == null) {
+        user.savedReferrals = [];
+      }
+      if (user.savedReferrals.includes(referralId)) {
+        return res.status(400).json({
+          message: "Referral already saved",
+        });
+      }
+      user.savedReferrals.push(referralId);
+      
+      // Save the user object with the updated savedReferrals array.
+      await user.save();
+      console.log(user);
+
+      // Optionally, you can send a success response.
+      return res.status(200).json({
+        message: "Referral saved successfully",
+        savedReferralId: referralId,
+      });
+    } catch (err) {
+      // Handle errors and pass them to the error handler middleware.
+      next(err);
+    }
+  }
+);
+
 export default router;
+
+
