@@ -7,6 +7,7 @@ import merchantRoute from "./routes/merchant";
 import pingRoute from "./routes/ping";
 import campaignRoute from "./routes/campaign";
 import referralRoute from "./routes/referral";
+import checkInRoute from "./routes/checkin";
 import cookieParser from "cookie-parser";
 import fs from "fs";
 import https from "https";
@@ -51,7 +52,7 @@ app.use("/api", userRoute);
 app.use("/api", merchantRoute);
 app.use("/api", campaignRoute);
 app.use("/api", referralRoute);
-
+app.use("/api", checkInRoute);
 app.use("/api", pingRoute);
 
 console.log(process.cwd());
