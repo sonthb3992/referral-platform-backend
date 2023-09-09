@@ -11,6 +11,7 @@ export interface CheckIn extends mongoose.Document {
     ref: "Outlet";
     required: true;
   };
+  visitCount: number;
   consents: {
     email: boolean;
     sms: boolean;
@@ -30,6 +31,7 @@ const checkInSchema: Schema<CheckIn> = new Schema<CheckIn>(
       ref: "Outlet",
       required: true,
     },
+    visitCount: { type: Number, default: 0 },
     consents: {
       email: Boolean,
       sms: Boolean,

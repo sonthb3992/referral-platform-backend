@@ -8,6 +8,7 @@ import {
   verifyToken,
 } from "../middlewares/authentication";
 import OutletModel, { Outlet } from "../models/outlet";
+import CheckInModel, { CheckIn } from "../models/checkin";
 
 interface MerchantOnboardingFormData {
   businessEmail: string;
