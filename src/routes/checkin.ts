@@ -17,16 +17,34 @@ router.post(
         return res.status(400).json({ error: "Required fields are missing." });
       }
 
-      const _checkin = new CheckInModel({
+      // Define the filter to find the existing record
+      const filter = { userId: req.userId, outletId: formData.outletId };
+      // Define the update to apply or create a new record
+      const update = {
         userId: req.userId,
         outletId: formData.outletId,
         consents: formData.consents ?? [],
-      });
-      await _checkin.save();
+      };
+
+      // Set the `upsert` option to true to create a new record if not found
+      const options = { upsert: true, new: true, setDefaultsOnInsert: true };
+
+      // Use findOneAndUpdate to update or create the record
+      const updatedCheckIn = await CheckInModel.findOneAndUpdate(
+        filter,
+        update,
+        options
+      );
+
+      // If the record existed, increment the visitCount
+      if (updatedCheckIn) {
+        updatedCheckIn.visitCount += 1;
+        await updatedCheckIn.save();
+      }
 
       res.status(201).json({
         message: "Campaign created successfully.",
-        checkIn: _checkin,
+        checkIn: updatedCheckIn,
       });
     } catch (error) {
       res
