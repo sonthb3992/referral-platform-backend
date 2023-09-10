@@ -163,7 +163,7 @@ router.get(
 router.get(
   "/getCampaignsOfOutlet",
   verifyToken,
-  authorize(["CUSTOMER"]),
+  authorize([...businessOwnerAuthorizedRoles, "CUSTOMER"]),
   async (req: Request, res, next) => {
     try {
       const userId = req.user._id;
