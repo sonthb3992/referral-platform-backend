@@ -1,48 +1,106 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 
-export enum ReferralTypeEnum {
-  REFERRING_USER_CODE = "REFERRING_USER_CODE",
-  REFERRED_USER_CODE = "REFERRED_USER_CODE",
-}
-
 export interface Referral extends Document {
-  campaignId: Types.ObjectId;
-  codeType: string;
-  referringUserID: Types.ObjectId;
-  referredUserID: Types.ObjectId | null;
+  userId: Schema.Types.ObjectId;
+  description: string;
+  termAndConditions: string;
+  referrerRewardPoint: number;
+  referredRewardType: "POINT" | "DISCOUNT" | "FREE_ITEM";
+  referredRewardPoint?: number;
+  referredDiscountPercentage?: number;
+  referredFreeItem?: {
+    name: string;
+    realValue: number;
+    image: string;
+  };
+  isActived: boolean;
+  maxParticipants?: number;
+  participantsCount: number;
+  daysToRedeem: number;
+  campaignImage: string;
+  startDate: Date;
+  endDate?: Date;
+  minSpend?: number;
+  timestamps: {
+    createdAt: Date;
+    updatedAt: Date;
+  };
 }
 
-const referralSchema = new Schema<Referral>(
-  {
-    campaignId: {
-      type: Schema.Types.ObjectId,
-      ref: "Campaign",
-      required: true,
+const referralSchema = new Schema({
+  userId: {
+    type: Schema.Types.ObjectId,
+    required: true,
+  },
+  description: {
+    type: String,
+    required: true,
+  },
+  termAndConditions: {
+    type: String,
+    required: true,
+  },
+  referrerRewardPoint: {
+    type: Number,
+    required: true,
+  },
+  referredRewardType: {
+    type: String,
+    enum: ["POINT", "DISCOUNT", "FREE_ITEM"],
+    required: true,
+  },
+  referredRewardPoint: {
+    type: Number,
+  },
+  referredDiscountPercentage: {
+    type: Number,
+  },
+  referredFreeItem: {
+    name: String,
+    realValue: Number,
+    image: String,
+  },
+  isActived: {
+    type: Boolean,
+    required: true,
+  },
+  maxParticipants: {
+    type: Number,
+  },
+  participantsCount: {
+    type: Number,
+    required: true,
+  },
+  daysToRedeem: {
+    type: Number,
+    required: true,
+  },
+  campaignImage: {
+    type: String,
+    required: true,
+  },
+  startDate: {
+    type: Date,
+    required: true,
+  },
+  endDate: {
+    type: Date,
+  },
+  minSpend: {
+    type: Number,
+  },
+  timestamps: {
+    createdAt: {
+      type: Date,
+      default: Date.now,
     },
-    codeType: {
-      type: String,
-      enum: Object.values(ReferralTypeEnum),
-      required: true,
-    },
-    referringUserID: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    referredUserID: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      default: null,
+    updatedAt: {
+      type: Date,
+      default: Date.now,
     },
   },
-  {
-    timestamps: {
-      createdAt: "crAt",
-      updatedAt: "upAt",
-    },
-  }
-);
+});
 
+referralSchema.set("timestamps", true);
 const ReferralModel = mongoose.model<Referral>("Referral", referralSchema);
-
-export default  ReferralModel
+export default ReferralModel;
