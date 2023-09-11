@@ -12,6 +12,7 @@ export interface CheckIn extends mongoose.Document {
     required: true;
   };
   visitCount: number;
+  status: "PENDING" | "APPROVED" | "REJECTED";
   consents: {
     email: boolean;
     sms: boolean;
@@ -32,6 +33,12 @@ const checkInSchema: Schema<CheckIn> = new Schema<CheckIn>(
       required: true,
     },
     visitCount: { type: Number, default: 0 },
+    status: {
+      type: String,
+      required: true,
+      enum: ["PENDING", "APPROVED", "REJECTED"],
+      default: "PENDING",
+    },
     consents: {
       email: Boolean,
       sms: Boolean,
