@@ -2,6 +2,7 @@ import express from "express";
 import { Request } from "../types/custom";
 import { authorize, verifyToken } from "../middlewares/authentication";
 import CheckInModel, { CheckIn } from "../models/checkin";
+import { UserModel } from "../models/user";
 
 const router = express.Router();
 
@@ -11,7 +12,6 @@ router.post(
   authorize(["CUSTOMER", "ADMIN"]),
   async (req: Request, res, next) => {
     try {
-      console.log(req.body);
       const formData: Partial<CheckIn> = req.body;
       if (!formData.outletId) {
         return res.status(400).json({ error: "Required fields are missing." });
@@ -56,6 +56,48 @@ router.post(
   }
 );
 
+router.post(
+  "/toggleFavorite",
+  verifyToken,
+  authorize(["CUSTOMER"]),
+  async (req: Request, res, next) => {
+    try {
+      const outletId = req.body.outletId;
+      if (!outletId) {
+        return res.status(400).json({ error: "Required fields are missing." });
+      }
+      // Find the user by userId in the token
+      const user = await UserModel.findById(req.userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found." });
+      }
+
+      // Check if the outletId is already in the favoriteOutlets array
+      const isFavorite = user.favoriteOutlets.includes(outletId);
+
+      if (isFavorite) {
+        // If it's a favorite, remove it
+        user.favoriteOutlets = user.favoriteOutlets.filter(
+          (favOutlet) => favOutlet.toString() !== outletId
+        );
+      } else {
+        // If it's not a favorite, add it
+        user.favoriteOutlets.push(outletId);
+      }
+
+      // Save the updated user
+      await user.save();
+      res.status(200).json(user);
+    } catch (error) {
+      res
+        .status(500)
+        .json({ error: "An error occurred while checking you in." });
+      console.error("Error creating campaign:", error);
+      next(error);
+    }
+  }
+);
+
 router.get(
   "/recentCheckins/:count?",
   verifyToken,
@@ -63,7 +105,6 @@ router.get(
   async (req: Request, res, next) => {
     try {
       const count = parseInt(req.params.count);
-      console.log("Count", count);
       const userId = req.userId;
 
       const result = await CheckInModel.find({ userId: userId })

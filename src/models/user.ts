@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
 // Define the properties of the User interface
 export interface User extends mongoose.Document {
@@ -14,6 +14,7 @@ export interface User extends mongoose.Document {
   profilePicture?: string;
   dob?: string;
   savedReferrals: string[];
+  favoriteOutlets: string[];
 }
 
 const userSchema = new mongoose.Schema(
@@ -35,6 +36,7 @@ const userSchema = new mongoose.Schema(
     profilePicture: { type: String },
     dob: { type: String },
     savedReferrals: [{ type: String }],
+    favoriteOutlets: [{ type: Schema.ObjectId, ref: "Outlet" }],
   },
   {
     timestamps: {

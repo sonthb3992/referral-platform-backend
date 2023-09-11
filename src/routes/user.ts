@@ -25,7 +25,6 @@ router.get(
   async (req: Request, res, next) => {
     try {
       const user = req.user;
-      console.log(user);
       res.status(200).json(user);
     } catch (err) {
       next(err);
@@ -135,7 +134,6 @@ const handleLogin = async (req, res, next, userRole: string) => {
     next();
   } catch (error) {
     res.status(401).json({ error: "Invalid token.", literal: error });
-    console.log("Invalid token");
     next(error);
   }
 };
@@ -148,14 +146,13 @@ router.post("/memberLogin", async (req, res, next) => {
   await handleLogin(req, res, next, "CUSTOMER");
 });
 
-
 router.get("/logout", verifyToken, async (req, res, next) => {
   try {
     res.clearCookie("jwt").status(200).json("success");
     next();
   } catch (error) {
     res.status(401).json({ error: "Invalid token.", literal: error });
-    console.log("Invalid token");
+    console.log("error", error);
     next(error);
   }
 });
@@ -168,7 +165,7 @@ router.post(
     try {
       const user = req.user;
       const { referralId } = req.params as { referralId: string };
-      
+
       const referral = await ReferralModel.findById(referralId);
       if (!referral) {
         return res.status(400).json({
@@ -186,10 +183,9 @@ router.post(
         });
       }
       user.savedReferrals.push(referralId);
-      
+
       // Save the user object with the updated savedReferrals array.
       await user.save();
-      console.log(user);
 
       // Optionally, you can send a success response.
       return res.status(200).json({
@@ -204,5 +200,3 @@ router.post(
 );
 
 export default router;
-
-
