@@ -2,6 +2,7 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 
 export interface Referral extends Document {
   userId: Schema.Types.ObjectId;
+  name: string;
   description: string;
   termAndConditions: string;
   referrerRewardPoint: number;
@@ -30,6 +31,10 @@ export interface Referral extends Document {
 const referralSchema = new Schema({
   userId: {
     type: Schema.Types.ObjectId,
+    required: true,
+  },
+  name: {
+    type: String,
     required: true,
   },
   description: {
