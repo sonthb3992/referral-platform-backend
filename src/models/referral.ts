@@ -1,10 +1,10 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 
 export interface Referral extends Document {
-  userId: Schema.Types.ObjectId;
+  userId: Schema.Types.ObjectId; //merchant
   name: string;
-  description: string;
-  termAndConditions: string;
+  description?: string;
+  termAndConditions?: string;
   referrerRewardPoint: number;
   referredRewardType: "POINT" | "DISCOUNT" | "FREE_ITEM";
   referredRewardPoint?: number;
@@ -39,11 +39,9 @@ const referralSchema = new Schema({
   },
   description: {
     type: String,
-    required: true,
   },
   termAndConditions: {
     type: String,
-    required: true,
   },
   referrerRewardPoint: {
     type: Number,

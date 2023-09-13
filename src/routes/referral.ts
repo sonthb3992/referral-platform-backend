@@ -26,11 +26,12 @@ router.post(
         res.status(200).json(existingProgram);
       } else {
         // If no program exists, create a new one
+        delete prog._id;
         const newProgram = new ReferralModel({
-          userId,
           ...prog,
+          userId: userId,
         });
-
+        console.log(newProgram);
         // Save the new program
         await newProgram.save();
 
