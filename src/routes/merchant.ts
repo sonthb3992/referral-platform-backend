@@ -1,14 +1,8 @@
 import express from "express";
-import admin from "../firebase/admin";
 import { UserModel, businessOwnerAuthorizedRoles } from "../models/user";
 import { Request } from "../types/custom";
-import {
-  authorize,
-  createToken,
-  verifyToken,
-} from "../middlewares/authentication";
+import { authorize, verifyToken } from "../middlewares/authentication";
 import OutletModel, { Outlet } from "../models/outlet";
-import CheckInModel, { CheckIn } from "../models/checkin";
 
 interface MerchantOnboardingFormData {
   businessEmail: string;

@@ -8,6 +8,7 @@ import pingRoute from "./routes/ping";
 import campaignRoute from "./routes/campaign";
 import referralRoute from "./routes/referral";
 import checkInRoute from "./routes/checkin";
+import imageRoute from "./routes/imageProxy";
 import cookieParser from "cookie-parser";
 import fs from "fs";
 import https from "https";
@@ -54,6 +55,7 @@ app.use("/api", campaignRoute);
 app.use("/api", referralRoute);
 app.use("/api", checkInRoute);
 app.use("/api", pingRoute);
+app.use("/api", imageRoute);
 
 console.log(process.cwd());
 

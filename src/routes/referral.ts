@@ -3,6 +3,7 @@ import admin from "../firebase/admin";
 import { UserModel, customerAuthorizedRoles } from "../models/user";
 import ReferralModel, { Referral } from "../models/referral";
 import { verifyToken, authorize } from "../middlewares/authentication";
+import { MD5 } from "crypto-js";
 
 const router = express.Router();
 
@@ -58,6 +59,57 @@ router.get(
       }
 
       res.status(200).json({ referralProgram });
+    } catch (error) {
+      res.status(500).json({
+        error: "An error occurred while retrieving the referral program.",
+      });
+      console.error("Error retrieving referral program:", error);
+      next(error);
+    }
+  }
+);
+
+// Define a function to generate a 6-digit code
+export function generateCode(userId: string, progId: string): string {
+  const combinedString = userId + progId;
+  let md5Hash = MD5(combinedString).toString();
+  let result = "";
+  while (result.length < 6) {
+    const numbers = md5Hash.match(/\d+/g);
+    if (numbers) {
+      result += numbers.join("");
+      if (result.length > 6) return result.substring(0, 6);
+    }
+    md5Hash = MD5(md5Hash).toString();
+  }
+  return "";
+}
+
+router.get(
+  "/getReferralCode/:progId",
+  verifyToken,
+  authorize(["CUSTOMER"]),
+  async (req: Request, res, next) => {
+    try {
+      const progId = req.params.progId;
+      const userId = req.userId;
+
+      if (!userId || !progId) {
+        return res.status(400).json({ error: "Required field is missing." });
+      }
+
+      // Find the referral program
+      const referralProgram = await ReferralModel.findOne({ _id: progId });
+
+      if (!referralProgram) {
+        return res.status(400).json({ error: "Promotion program not found." });
+      }
+
+      // Generate the 6-digit code
+      const referralCode = generateCode(userId.toString(), progId);
+
+      // Return the generated code
+      res.status(200).json({ code: referralCode });
     } catch (error) {
       res.status(500).json({
         error: "An error occurred while retrieving the referral program.",
