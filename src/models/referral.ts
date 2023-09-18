@@ -28,6 +28,12 @@ export interface Referral extends Document {
   };
 }
 
+export interface ReferralProgramQRCode {
+  referrerId?: string;
+  campaignId?: string;
+  code?: string;
+}
+
 const referralSchema = new Schema({
   userId: {
     type: Schema.Types.ObjectId,

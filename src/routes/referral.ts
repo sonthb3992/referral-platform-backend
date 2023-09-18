@@ -1,9 +1,16 @@
 import express, { Request, Response, NextFunction } from "express";
 import admin from "../firebase/admin";
 import { UserModel, customerAuthorizedRoles } from "../models/user";
-import ReferralModel, { Referral } from "../models/referral";
+import ReferralModel, {
+  Referral,
+  ReferralProgramQRCode,
+} from "../models/referral";
 import { verifyToken, authorize } from "../middlewares/authentication";
 import { MD5 } from "crypto-js";
+import CampaignModel from "../models/campaign";
+import RewardModel from "../models/reward";
+import add from "date-fns/add";
+import { isBefore } from "date-fns";
 
 const router = express.Router();
 
@@ -84,6 +91,74 @@ export function generateCode(userId: string, progId: string): string {
   }
   return "";
 }
+
+router.post(
+  "/verifyReferralCode",
+  verifyToken,
+  authorize(["CUSTOMER", "ADMIN"]),
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.userId;
+    const qrCode: ReferralProgramQRCode = req.body;
+    try {
+      if (!qrCode.campaignId || !qrCode.code || !qrCode.referrerId) {
+        return res.status(400).json({ error: "Required fields is missing" });
+      }
+
+      // Generate the 6-digit code
+      const referralCode = generateCode(qrCode.referrerId, qrCode.campaignId);
+      if (referralCode !== qrCode.code) {
+        return res.status(400).json({ error: "Invalid verification code" });
+      }
+      //Check if the campaign existed
+      const refProg = await ReferralModel.findById(qrCode.campaignId);
+      if (!refProg) {
+        return res.status(404).json({ error: "Campaign not found" });
+      }
+
+      //Check if the campaign has expired
+      const progEndDate = refProg.endDate;
+      const currentDate = new Date();
+      if (progEndDate && isBefore(progEndDate, currentDate)) {
+        return res.status(400).json({ error: "The campaign has ended." });
+      }
+
+      //Check if the user has claimed this reward before
+      const existing = await RewardModel.find({
+        userId: req.userId,
+        referralProgramId: qrCode.campaignId,
+      });
+      if (existing.length > 0) {
+        return res
+          .status(400)
+          .json({ error: "The user has claimed this reward." });
+      }
+
+      //Create the rewards
+      const newReward = new RewardModel({
+        userId: req.userId,
+        referralProgramId: qrCode.campaignId,
+        refferedByUserId: qrCode.referrerId,
+      });
+      const futureDate = add(currentDate, { days: refProg.daysToRedeem }); // Add 7 days
+      if (progEndDate === undefined) {
+        newReward.expireDate = futureDate;
+      } else {
+        newReward.expireDate = isBefore(futureDate, progEndDate)
+          ? futureDate
+          : progEndDate;
+      }
+
+      await newReward.save();
+      return res.status(201).json({ message: "success" });
+    } catch (error) {
+      res.status(500).json({
+        error: "An unexpected error happened.",
+      });
+      console.error("An unexpected error happened:", error);
+      next(error);
+    }
+  }
+);
 
 router.get(
   "/getReferralCode/:progId",

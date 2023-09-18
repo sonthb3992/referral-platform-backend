@@ -6,6 +6,10 @@ export interface Reward extends mongoose.Document {
   promotionProgramId?: ObjectId;
   refferedByUserId?: ObjectId; //ID of userA
   expireDate: Date;
+  isUsed: boolean;
+  isExpired: boolean;
+  useDate?: Date;
+  usePlace?: ObjectId;
 }
 
 const rewardSchema = new Schema({
