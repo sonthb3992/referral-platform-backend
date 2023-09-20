@@ -23,6 +23,7 @@ const port = process.env.PORT || 3001;
 const allowedOrigins = [
   "https://caffino-referral-platform.web.app",
   "http://localhost:3000",
+  "http://localhost:4000",
 ];
 
 // Configure CORS to allow requests from http://localhost:3000

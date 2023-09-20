@@ -109,6 +109,11 @@ router.post(
       if (referralCode !== qrCode.code) {
         return res.status(400).json({ error: "Invalid verification code" });
       }
+
+      if (qrCode.referrerId === req.userId.toString()) {
+        return res.status(400).json({ error: "Can't claim own referral code" });
+      }
+
       //Check if the campaign existed
       const refProg = await ReferralModel.findById(qrCode.campaignId);
       if (!refProg) {
