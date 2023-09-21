@@ -4,8 +4,39 @@ import { UserModel, customerAuthorizedRoles } from "../models/user";
 import ReferralModel, { Referral } from "../models/referral";
 import { verifyToken, authorize } from "../middlewares/authentication";
 import { MD5 } from "crypto-js";
+import RewardModel from "../models/reward";
 
 const router = express.Router();
+
+// router.get(
+//   "/reward/:used",
+//   verifyToken,
+//   authorize(["CUSTOMER"]),
+//   async (req: Request, res, next) => {
+//     try {
+//       const used = req.params.used;
+//       if (used) {
+
+//       }
+
+//       // Find the referral program
+//       const referralProgram = await RewardModel.find({ _userId: req.userId, isUsed:  });
+
+//       if (!referralProgram) {
+//         return res.status(400).json({ error: "Promotion program not found." });
+//       }
+
+//       // Return the generated code
+//     //   res.status(200).json({ code: referralCode });
+//     } catch (error) {
+//       res.status(500).json({
+//         error: "An error occurred while retrieving the referral program.",
+//       });
+//       console.error("Error retrieving referral program:", error);
+//       next(error);
+//     }
+//   }
+// );
 
 // router.post(
 //   "/saveReward",

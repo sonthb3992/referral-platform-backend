@@ -97,6 +97,7 @@ router.post(
   verifyToken,
   authorize(["CUSTOMER", "ADMIN"]),
   async (req: Request, res: Response, next: NextFunction) => {
+    console.log("verifyReferralCode ");
     const userId = req.userId;
     const qrCode: ReferralProgramQRCode = req.body;
     try {

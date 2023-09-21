@@ -100,16 +100,10 @@ const handleLogin = async (req, res, next, userRole: string) => {
     }
 
     const token = createToken(user.id, user.googleId, user.email, user.phone);
-    res
-      .cookie("jwt", token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-      })
-      .status(newUser ? 201 : 200)
-      .json({
-        user,
-      });
+    res.status(newUser ? 201 : 200).json({
+      user,
+      token,
+    });
 
     next();
   } catch (error) {
