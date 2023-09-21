@@ -3,6 +3,7 @@ import { UserModel, businessOwnerAuthorizedRoles } from "../models/user";
 import { Request } from "../types/custom";
 import { authorize, verifyToken } from "../middlewares/authentication";
 import OutletModel, { Outlet } from "../models/outlet";
+import { Schema } from "mongoose";
 
 interface MerchantOnboardingFormData {
   businessEmail: string;
@@ -100,6 +101,12 @@ router.post(
   }
 );
 
+export const getOutletOfUserId = async (
+  userId?: Schema.Types.ObjectId
+): Promise<Outlet[]> => {
+  return await OutletModel.find({ userId: userId });
+};
+
 router.get(
   "/outlet",
   verifyToken,
@@ -107,8 +114,7 @@ router.get(
   async (req: Request, res, next) => {
     try {
       // Retrieve all outlets for the authenticated user
-      const outlets = await OutletModel.find({ userId: req.user._id });
-
+      const outlets = await getOutletOfUserId(req.user._id);
       res.status(200).json({ outlets });
     } catch (error) {
       res

@@ -9,6 +9,7 @@ import campaignRoute from "./routes/campaign";
 import referralRoute from "./routes/referral";
 import checkInRoute from "./routes/checkin";
 import imageRoute from "./routes/imageProxy";
+import rewardRoute from "./routes/reward";
 import cookieParser from "cookie-parser";
 import fs from "fs";
 import https from "https";
@@ -57,7 +58,7 @@ app.use("/api", referralRoute);
 app.use("/api", checkInRoute);
 app.use("/api", pingRoute);
 app.use("/api", imageRoute);
-
+app.use("/api", rewardRoute);
 console.log(process.cwd());
 
 const certificate = fs.readFileSync("src/ssl/certificate.pem", "utf8");

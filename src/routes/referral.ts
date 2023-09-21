@@ -76,6 +76,31 @@ router.get(
   }
 );
 
+router.get(
+  "/referralProgramById/:programId",
+  verifyToken,
+  async (req: Request, res, next) => {
+    try {
+      const programId = req.params.programId;
+
+      // Find the referral program for the logged-in user
+      const referralProgram = await ReferralModel.findById(programId);
+
+      if (!referralProgram) {
+        return res.status(200).json([]);
+      }
+
+      res.status(200).json({ referralProgram });
+    } catch (error) {
+      res.status(500).json({
+        error: "An error occurred while retrieving the referral program.",
+      });
+      console.error("Error retrieving referral program:", error);
+      next(error);
+    }
+  }
+);
+
 // Define a function to generate a 6-digit code
 export function generateCode(userId: string, progId: string): string {
   const combinedString = userId + progId;

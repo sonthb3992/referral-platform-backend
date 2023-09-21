@@ -5,38 +5,58 @@ import ReferralModel, { Referral } from "../models/referral";
 import { verifyToken, authorize } from "../middlewares/authentication";
 import { MD5 } from "crypto-js";
 import RewardModel from "../models/reward";
+import { Schema } from "mongoose";
+import { Outlet } from "../models/outlet";
+import { getOutletOfUserId } from "./merchant";
 
 const router = express.Router();
 
-// router.get(
-//   "/reward/:used",
-//   verifyToken,
-//   authorize(["CUSTOMER"]),
-//   async (req: Request, res, next) => {
-//     try {
-//       const used = req.params.used;
-//       if (used) {
+router.get(
+  "/reward",
+  verifyToken,
+  authorize(["CUSTOMER"]),
+  async (req: Request, res, next) => {
+    try {
+      var query: any = { userId: req.userId };
+      const rewards = await RewardModel.find(query);
 
-//       }
+      if (!rewards) {
+        return res.status(400).json({ error: "Promotion program not found." });
+      }
+      const progPromises = rewards.map(async (reward) => {
+        const prog = await ReferralModel.findById(reward.referralProgramId);
+        return {
+          reward: reward,
+          campaign: prog,
+        };
+      });
 
-//       // Find the referral program
-//       const referralProgram = await RewardModel.find({ _userId: req.userId, isUsed:  });
+      const rewardsWithCampaign = await Promise.all(progPromises);
+      const outletPromises = rewardsWithCampaign.map(
+        async (rewardsWithCampaign) => {
+          const outlets = await getOutletOfUserId(
+            rewardsWithCampaign.campaign.userId
+          );
+          return {
+            reward: rewardsWithCampaign.reward,
+            campaign: rewardsWithCampaign.campaign,
+            outlets: outlets,
+          };
+        }
+      );
 
-//       if (!referralProgram) {
-//         return res.status(400).json({ error: "Promotion program not found." });
-//       }
+      const result = await Promise.all(outletPromises);
 
-//       // Return the generated code
-//     //   res.status(200).json({ code: referralCode });
-//     } catch (error) {
-//       res.status(500).json({
-//         error: "An error occurred while retrieving the referral program.",
-//       });
-//       console.error("Error retrieving referral program:", error);
-//       next(error);
-//     }
-//   }
-// );
+      res.status(200).json({ result });
+    } catch (error) {
+      res.status(500).json({
+        error: "An error occurred while retrieving the referral program.",
+      });
+      console.error("Error retrieving referral program:", error);
+      next(error);
+    }
+  }
+);
 
 // router.post(
 //   "/saveReward",
