@@ -10,6 +10,7 @@ import { Outlet } from "../models/outlet";
 import { getOutletOfUserId } from "./merchant";
 import { generateCode } from "./referral";
 import RedeemRequestModel from "../models/redeemRequest";
+import { addMinutes, isBefore } from "date-fns";
 
 const router = express.Router();
 
@@ -60,6 +61,69 @@ router.get(
   }
 );
 
+const getRewardById = async (rewardId: string) => {
+  const reward = await RewardModel.findById(rewardId);
+  if (!reward) {
+    return new Error("Reward not found");
+  }
+  const campaign = await ReferralModel.findById(reward.referralProgramId);
+  if (!campaign) {
+    return new Error("Campaign not found");
+  }
+  if (!campaign.isActived) {
+    return new Error("Campaign disabled");
+  }
+  if (
+    campaign.maxParticipants &&
+    campaign.maxParticipants <= campaign.participantsCount
+  ) {
+    return new Error("Max participants reached");
+  }
+  if (campaign.endDate && isBefore(new Date(campaign.endDate), new Date())) {
+    return new Error("Campaign expired");
+  }
+
+  return { reward, campaign };
+};
+
+router.get(
+  "/verifyRewardRequestCode/:code",
+  verifyToken,
+  authorize(["BUSINESS_OWNER", "BUSINESS_STAFF", "ADMIN"]),
+  async (req: Request, res, next) => {
+    try {
+      const code = req.params.code;
+      if (!code) {
+        return res.status(400).json({ error: "Required field is missing." });
+      }
+
+      const request = await RedeemRequestModel.findOne({ code: code });
+      if (!request) {
+        return res.status(400).json({ error: "Invalid code." });
+      }
+      const codeExpireTime = addMinutes(new Date(request.updateAt), 5);
+      if (isBefore(codeExpireTime, new Date())) {
+        if (!request) {
+          return res.status(400).json({ error: "Code is expired." });
+        }
+      }
+      const result = await getRewardById(request.rewardId.toString());
+      if (result instanceof Error) {
+        return res.status(400).json({ error: result.message });
+      }
+      res
+        .status(200)
+        .json({ reward: result.reward, campaign: result.campaign });
+    } catch (error) {
+      res.status(500).json({
+        error: "An error occurred while retrieving the referral program.",
+      });
+      console.error("Error retrieving referral program:", error);
+      next(error);
+    }
+  }
+);
+
 router.get(
   "/reward/:rewardId",
   verifyToken,
@@ -70,29 +134,13 @@ router.get(
       if (!rewardId) {
         return res.status(400).json({ error: "Required field is missing." });
       }
-
-      const reward = await RewardModel.findById(rewardId);
-      if (!reward) {
-        return res.status(400).json({ error: "Reward not found." });
+      const result = await getRewardById(rewardId);
+      if (result instanceof Error) {
+        return res.status(400).json({ error: result.message });
       }
-      const campaign = await ReferralModel.findById(reward.referralProgramId);
-      if (!campaign) {
-        return res.status(400).json({ error: "Referral program not found." });
-      }
-      if (!campaign.isActived) {
-        return res.status(400).json({ error: "Referral program is disabled." });
-      }
-      if (
-        campaign.maxParticipants &&
-        campaign.maxParticipants <= campaign.participantsCount
-      ) {
-        return res.status(400).json({ error: "Max participants reached." });
-      }
-      if (campaign.endDate) {
-        return res.status(400).json({ error: "The program is expired." });
-      }
-      const outlets = await getOutletOfUserId(campaign.userId);
-      res.status(200).json({ reward, campaign, outlets });
+      res
+        .status(200)
+        .json({ reward: result.reward, campaign: result.campaign });
     } catch (error) {
       res.status(500).json({
         error: "An error occurred while retrieving the referral program.",
