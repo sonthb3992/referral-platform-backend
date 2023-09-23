@@ -154,11 +154,11 @@ router.post(
       }
 
       //Check if the user has claimed this reward before
-      const existing = await RewardModel.find({
+      const existing = await RewardModel.findOne({
         userId: req.userId,
         referralProgramId: qrCode.campaignId,
       });
-      if (existing.length > 0) {
+      if (existing) {
         return res
           .status(400)
           .json({ error: "The user has claimed this reward." });
@@ -168,7 +168,7 @@ router.post(
       const newReward = new RewardModel({
         userId: req.userId,
         referralProgramId: qrCode.campaignId,
-        refferedByUserId: qrCode.referrerId,
+        referredByUserId: qrCode.referrerId,
       });
       const futureDate = add(currentDate, { days: refProg.daysToRedeem }); // Add 7 days
       if (progEndDate === undefined) {

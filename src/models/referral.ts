@@ -72,6 +72,7 @@ const referralSchema = new Schema({
   isActived: {
     type: Boolean,
     required: true,
+    default: true,
   },
   maxParticipants: {
     type: Number,

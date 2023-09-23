@@ -4,7 +4,7 @@ export interface Reward extends mongoose.Document {
   userId: ObjectId; //member ID of user B
   referralProgramId?: ObjectId;
   promotionProgramId?: ObjectId;
-  refferedByUserId?: ObjectId; //ID of userA
+  referredByUserId?: ObjectId; //ID of userA
   expireDate: Date;
   isUsed: boolean;
   isExpired: boolean;
