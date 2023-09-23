@@ -8,6 +8,8 @@ import RewardModel from "../models/reward";
 import { Schema } from "mongoose";
 import { Outlet } from "../models/outlet";
 import { getOutletOfUserId } from "./merchant";
+import { generateCode } from "./referral";
+import RedeemRequestModel from "../models/redeemRequest";
 
 const router = express.Router();
 
@@ -54,6 +56,106 @@ router.get(
       });
       console.error("Error retrieving referral program:", error);
       next(error);
+    }
+  }
+);
+
+router.get(
+  "/reward/:rewardId",
+  verifyToken,
+  authorize(["BUSINESS_OWNER", "BUSINESS_STAFF", "ADMIN"]),
+  async (req: Request, res, next) => {
+    try {
+      const rewardId = req.params.rewardId;
+      if (!rewardId) {
+        return res.status(400).json({ error: "Required field is missing." });
+      }
+
+      const reward = await RewardModel.findById(rewardId);
+      if (!reward) {
+        return res.status(400).json({ error: "Reward not found." });
+      }
+      const campaign = await ReferralModel.findById(reward.referralProgramId);
+      if (!campaign) {
+        return res.status(400).json({ error: "Referral program not found." });
+      }
+      if (!campaign.isActived) {
+        return res.status(400).json({ error: "Referral program is disabled." });
+      }
+      if (
+        campaign.maxParticipants &&
+        campaign.maxParticipants <= campaign.participantsCount
+      ) {
+        return res.status(400).json({ error: "Max participants reached." });
+      }
+      if (campaign.endDate) {
+        return res.status(400).json({ error: "The program is expired." });
+      }
+      const outlets = await getOutletOfUserId(campaign.userId);
+      res.status(200).json({ reward, campaign, outlets });
+    } catch (error) {
+      res.status(500).json({
+        error: "An error occurred while retrieving the referral program.",
+      });
+      console.error("Error retrieving referral program:", error);
+      next(error);
+    }
+  }
+);
+
+router.post(
+  "/requestRedeem",
+  verifyToken,
+  authorize(["CUSTOMER"]),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { rewardId } = req.body;
+
+      // Check if rewardId is provided
+      if (!rewardId) {
+        return res.status(400).json({ error: "RewardId is required." });
+      }
+
+      const reward = await RewardModel.findOne({
+        userId: req.userId,
+        _id: rewardId,
+      });
+
+      if (!reward) {
+        return res.status(400).json({ error: "Invalid reward data." });
+      }
+
+      if (reward.isUsed || reward.isExpired) {
+        return res
+          .status(400)
+          .json({ error: "This reward had been used or expired." });
+      }
+
+      const existingRequest = await RedeemRequestModel.findOne({
+        rewardId: rewardId,
+      });
+      const newCode = generateCode(rewardId, new Date().getTime().toString());
+
+      if (existingRequest) {
+        // If the request exists, generate a new code and update the existing request
+        existingRequest.code = newCode;
+        await existingRequest.save();
+        return res.status(200).json({ code: newCode });
+      }
+
+      const newRequest = new RedeemRequestModel({
+        rewardId: reward._id,
+        code: newCode,
+      });
+
+      await newRequest.save();
+
+      return res.status(200).json({ code: newCode });
+    } catch (error) {
+      console.error("Error requesting redeem:", error);
+      return res
+        .status(500)
+        .json({ error: "An error occurred while requesting redeem." });
     }
   }
 );
