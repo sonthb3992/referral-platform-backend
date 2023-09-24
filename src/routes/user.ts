@@ -1,10 +1,10 @@
+import { roundToNearestMinutes } from "date-fns";
 import admin from "../firebase/admin";
 import {
   authorize,
   createToken,
   verifyToken,
 } from "../middlewares/authentication";
-import ReferralModel from "../models/referral";
 import { UserModel, customerAuthorizedRoles } from "../models/user";
 import express, { Request, Response, NextFunction } from "express";
 
