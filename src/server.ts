@@ -8,6 +8,9 @@ import pingRoute from "./routes/ping";
 import campaignRoute from "./routes/campaign";
 import referralRoute from "./routes/referral";
 import checkInRoute from "./routes/checkin";
+import imageRoute from "./routes/imageProxy";
+import rewardRoute from "./routes/reward";
+import withdrawalRoute from "./routes/withdraw";
 import cookieParser from "cookie-parser";
 import fs from "fs";
 import https from "https";
@@ -22,6 +25,7 @@ const port = process.env.PORT || 3001;
 const allowedOrigins = [
   "https://caffino-referral-platform.web.app",
   "http://localhost:3000",
+  "http://localhost:4000",
 ];
 
 // Configure CORS to allow requests from http://localhost:3000
@@ -54,7 +58,9 @@ app.use("/api", campaignRoute);
 app.use("/api", referralRoute);
 app.use("/api", checkInRoute);
 app.use("/api", pingRoute);
-
+app.use("/api", imageRoute);
+app.use("/api", rewardRoute);
+app.use("/api", withdrawalRoute);
 console.log(process.cwd());
 
 const certificate = fs.readFileSync("src/ssl/certificate.pem", "utf8");

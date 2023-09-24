@@ -1,10 +1,10 @@
+import { roundToNearestMinutes } from "date-fns";
 import admin from "../firebase/admin";
 import {
   authorize,
   createToken,
   verifyToken,
 } from "../middlewares/authentication";
-import ReferralModel from "../models/referral";
 import { UserModel, customerAuthorizedRoles } from "../models/user";
 import express, { Request, Response, NextFunction } from "express";
 
@@ -40,45 +40,25 @@ router.put(
   authorize(updateUserInfoAuthorizedRoles),
   async (req: Request, res, next) => {
     try {
-      const formData: UserOnboardingFormData = req.body;
-      if (!formData.firstName || !formData.lastName) {
-        return res.status(400).json({ error: "Required field is missing." });
-      }
-
-      // Find the user by userId in the token
-      const userId = req.userId; // userId from the token
-
+      const userId = req.userId;
       const existingUser = await UserModel.findById(userId);
-
       if (!existingUser) {
         return res.status(404).json({ error: "User not found." });
       }
 
-      // Update user's information
-      if (formData.firstName) {
-        existingUser.firstName = formData.firstName;
+      const formData: UserOnboardingFormData = req.body;
+      const requiredFields = ["firstName", "lastName"];
+      for (const field of requiredFields) {
+        if (!formData[field]) {
+          return res.status(400).json({ error: `${field} is required.` });
+        }
       }
-
-      if (formData.lastName) {
-        existingUser.lastName = formData.lastName;
+      for (const field in formData) {
+        if (formData[field]) {
+          existingUser[field] = formData[field];
+        }
       }
-
-      if (formData.address) {
-        existingUser.address = formData.address;
-      }
-
-      if (formData.email) {
-        existingUser.email = formData.email;
-      }
-
-      if (formData.gender) {
-        existingUser.gender = formData.gender;
-      }
-
-      if (formData.dob) {
-        existingUser.dob = formData.dob;
-      }
-
+      existingUser.onboarded = true;
       //Save the updated user
       await existingUser.save();
 
@@ -113,26 +93,21 @@ const handleLogin = async (req, res, next, userRole: string) => {
         phone: decodedToken.phone_number,
         userRole,
         profilePicture: decodedToken.picture,
+        onboarded: false,
       });
       await user.save();
       newUser = true;
     }
 
     const token = createToken(user.id, user.googleId, user.email, user.phone);
-    res
-      .cookie("jwt", token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-      })
-      .status(newUser ? 201 : 200)
-      .json({
-        user,
-        tokenTime: 3600,
-      });
+    res.status(newUser ? 201 : 200).json({
+      user,
+      token,
+    });
 
     next();
   } catch (error) {
+    console.log(error);
     res.status(401).json({ error: "Invalid token.", literal: error });
     next(error);
   }
@@ -146,9 +121,8 @@ router.post("/memberLogin", async (req, res, next) => {
   await handleLogin(req, res, next, "CUSTOMER");
 });
 
-router.get("/logout", verifyToken, async (req, res, next) => {
+router.get("/logout", async (req, res, next) => {
   try {
-    res.clearCookie("jwt").status(200).json("success");
     next();
   } catch (error) {
     res.status(401).json({ error: "Invalid token.", literal: error });
@@ -156,47 +130,5 @@ router.get("/logout", verifyToken, async (req, res, next) => {
     next(error);
   }
 });
-
-router.post(
-  "/save/referral/:referralId",
-  verifyToken,
-  authorize(customerAuthorizedRoles),
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const user = req.user;
-      const { referralId } = req.params as { referralId: string };
-
-      const referral = await ReferralModel.findById(referralId);
-      if (!referral) {
-        return res.status(400).json({
-          message: "Invalid Referral Id",
-        });
-      }
-
-      // Assuming that `user.savedReferrals` is an array, you can push `referralId` into it.
-      if (user.savedReferrals == null) {
-        user.savedReferrals = [];
-      }
-      if (user.savedReferrals.includes(referralId)) {
-        return res.status(400).json({
-          message: "Referral already saved",
-        });
-      }
-      user.savedReferrals.push(referralId);
-
-      // Save the user object with the updated savedReferrals array.
-      await user.save();
-
-      // Optionally, you can send a success response.
-      return res.status(200).json({
-        message: "Referral saved successfully",
-        savedReferralId: referralId,
-      });
-    } catch (err) {
-      // Handle errors and pass them to the error handler middleware.
-      next(err);
-    }
-  }
-);
 
 export default router;

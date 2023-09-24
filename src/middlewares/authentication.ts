@@ -36,7 +36,11 @@ const createToken = (
 
 // Define the verifyToken middleware function
 async function verifyToken(req: Request, res: Response, next: NextFunction) {
-  const token = req.cookies.jwt;
+  const authorizationHeader = req.headers["authorization"];
+  if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Bearer token not provided" });
+  }
+  const token = authorizationHeader.split(" ")[1];
 
   if (!token) {
     return res.status(401).json({ message: "Token not provided" });
@@ -55,22 +59,22 @@ async function verifyToken(req: Request, res: Response, next: NextFunction) {
       });
     });
 
-    const currentTime = Math.floor(Date.now() / 1000);
-    const tokenIssuedAtTime = decoded.iat;
-    const expirationThreshold = 5 * 60;
-    if (currentTime - tokenIssuedAtTime >= expirationThreshold) {
-      const refreshedToken = createToken(
-        decoded.userId,
-        decoded.googleId,
-        decoded.email,
-        decoded.phone
-      );
-      res.cookie("jwt", refreshedToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-      });
-    }
+    // const currentTime = Math.floor(Date.now() / 1000);
+    // const tokenIssuedAtTime = decoded.iat;
+    // const expirationThreshold = 5 * 60;
+    // if (currentTime - tokenIssuedAtTime >= expirationThreshold) {
+    //   const refreshedToken = createToken(
+    //     decoded.userId,
+    //     decoded.googleId,
+    //     decoded.email,
+    //     decoded.phone
+    //   );
+    //   res.cookie("jwt", refreshedToken, {
+    //     httpOnly: true,
+    //     secure: true,
+    //     sameSite: "none",
+    //   });
+    // }
     req.userId = decoded.userId;
 
     // Find the user based on the decoded userId
