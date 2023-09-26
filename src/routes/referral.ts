@@ -11,6 +11,8 @@ import CampaignModel from "../models/campaign";
 import RewardModel from "../models/reward";
 import add from "date-fns/add";
 import { isBefore } from "date-fns";
+import { tr } from "date-fns/locale";
+import { generateCode } from "../utils/code";
 
 const router = express.Router();
 
@@ -101,29 +103,36 @@ router.get(
   }
 );
 
-// Define a function to generate a 6-digit code
-export function generateCode(userId: string, progId: string): string {
-  const combinedString = userId + progId;
-  let md5Hash = MD5(combinedString).toString();
-  let result = "";
-  while (result.length < 6) {
-    const numbers = md5Hash.match(/\d+/g);
-    if (numbers) {
-      result += numbers.join("");
-      if (result.length > 6) return result.substring(0, 6);
+router.get(
+  "/referrer/:referrerId",
+  verifyToken,
+  async (req: Request, res, next) => {
+    try {
+      const referrerId = req.params.referrerId;
+
+      // Find the referral program for the logged-in user
+      const referrer = await UserModel.findById(referrerId);
+
+      if (!referrer) {
+        return res.status(404).json({ error: "Not found" });
+      }
+
+      res.status(200).json({ user: referrer });
+    } catch (error) {
+      res.status(500).json({
+        error: "An error occurred while retrieving the referral program.",
+      });
+      console.error("Error retrieving referral program:", error);
+      next(error);
     }
-    md5Hash = MD5(md5Hash).toString();
   }
-  return "";
-}
+);
 
 router.post(
   "/verifyReferralCode",
   verifyToken,
   authorize(["CUSTOMER", "ADMIN"]),
   async (req: Request, res: Response, next: NextFunction) => {
-    console.log("verifyReferralCode ");
-    const userId = req.userId;
     const qrCode: ReferralProgramQRCode = req.body;
     try {
       if (!qrCode.campaignId || !qrCode.code || !qrCode.referrerId) {
@@ -164,23 +173,43 @@ router.post(
           .json({ error: "The user has claimed this reward." });
       }
 
-      //Create the rewards
-      const newReward = new RewardModel({
-        userId: req.userId,
-        referralProgramId: qrCode.campaignId,
-        referredByUserId: qrCode.referrerId,
-      });
-      const futureDate = add(currentDate, { days: refProg.daysToRedeem }); // Add 7 days
-      if (progEndDate === undefined) {
-        newReward.expireDate = futureDate;
-      } else {
-        newReward.expireDate = isBefore(futureDate, progEndDate)
-          ? futureDate
-          : progEndDate;
+      const referrer = await UserModel.findById(qrCode.referrerId);
+      if (!referrer) {
+        return res.status(400).json({ error: "Invalid referrer." });
       }
 
-      await newReward.save();
-      return res.status(201).json({ message: "success" });
+      const business = await UserModel.findById(refProg.userId);
+      if (!business) {
+        return res.status(400).json({ error: "Invalid business." });
+      }
+      return res.status(200).json({
+        campaign: refProg,
+        referrerName: `${referrer.firstName} ${referrer.lastName}`,
+        business: business,
+        code: generateCode(
+          qrCode.campaignId,
+          req.userId.toString(),
+          qrCode.referrerId
+        ),
+      });
+
+      // //Create the rewards
+      // const newReward = new RewardModel({
+      //   userId: req.userId,
+      //   referralProgramId: qrCode.campaignId,
+      //   referredByUserId: qrCode.referrerId,
+      // });
+      // const futureDate = add(currentDate, { days: refProg.daysToRedeem }); // Add 7 days
+      // if (progEndDate === undefined) {
+      //   newReward.expireDate = futureDate;
+      // } else {
+      //   newReward.expireDate = isBefore(futureDate, progEndDate)
+      //     ? futureDate
+      //     : progEndDate;
+      // }
+
+      // await newReward.save();
+      // return res.status(201).json({ message: "success" });
     } catch (error) {
       res.status(500).json({
         error: "An unexpected error happened.",
@@ -204,17 +233,12 @@ router.get(
         return res.status(400).json({ error: "Required field is missing." });
       }
 
-      // Find the referral program
       const referralProgram = await ReferralModel.findOne({ _id: progId });
-
       if (!referralProgram) {
         return res.status(400).json({ error: "Promotion program not found." });
       }
 
-      // Generate the 6-digit code
       const referralCode = generateCode(userId.toString(), progId);
-
-      // Return the generated code
       res.status(200).json({ code: referralCode });
     } catch (error) {
       res.status(500).json({
@@ -225,6 +249,42 @@ router.get(
     }
   }
 );
+
+// router.get(
+//   "/hasUserJoined/:progId",
+//   verifyToken,
+//   authorize(["CUSTOMER"]),
+//   async (req: Request, res, next) => {
+//     try {
+//       const progId = req.params.progId;
+//       const userId = req.userId;
+
+//       if (!userId || !progId) {
+//         return res.status(400).json({ error: "Required field is missing." });
+//       }
+//       const prog = await ReferralModel.findById(progId);
+//       if (!prog) {
+//         return res.status(404).json({ error: "Campaign not found." });
+//       }
+
+//       const rewardProgram = await RewardModel.findOne({
+//         referralProgramId: progId,
+//         userId: userId,
+//       });
+
+//       if (rewardProgram) {
+//         return res.status(200).json({ joined: true });
+//       }
+//       return res.status(200).json({ joined: false, campaign: prog });
+//     } catch (error) {
+//       res.status(500).json({
+//         error: "An error occurred while retrieving the referral program.",
+//       });
+//       console.error("Error retrieving referral program:", error);
+//       next(error);
+//     }
+//   }
+// );
 
 // router.get(
 //   "/referral/:referralId",

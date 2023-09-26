@@ -1,16 +1,17 @@
 import express, { Request, Response, NextFunction } from "express";
 import admin from "../firebase/admin";
-import { UserModel, customerAuthorizedRoles } from "../models/user";
+import { User, UserModel, customerAuthorizedRoles } from "../models/user";
 import ReferralModel, { Referral } from "../models/referral";
 import { verifyToken, authorize } from "../middlewares/authentication";
 import { MD5 } from "crypto-js";
 import RewardModel from "../models/reward";
-import { Schema } from "mongoose";
+import mongoose, { Schema } from "mongoose";
 import { Outlet } from "../models/outlet";
 import { getOutletOfUserId } from "./merchant";
-import { generateCode } from "./referral";
 import RedeemRequestModel from "../models/redeemRequest";
-import { addMinutes, isBefore } from "date-fns";
+import { add, addMinutes, isBefore } from "date-fns";
+import { generateCode } from "../utils/code";
+import CheckInModel from "../models/checkin";
 
 const router = express.Router();
 
@@ -20,7 +21,7 @@ router.get(
   authorize(["CUSTOMER"]),
   async (req: Request, res, next) => {
     try {
-      var query: any = { userId: req.userId };
+      var query = { userId: req.userId, isUsed: false };
       const rewards = await RewardModel.find(query);
 
       if (!rewards) {
@@ -61,10 +62,32 @@ router.get(
   }
 );
 
-const getRewardById = async (rewardId: string) => {
+const getRewardById = async (
+  rewardId: string
+): Promise<
+  | Error
+  | {
+      reward: mongoose.Document<
+        unknown,
+        {},
+        import("e:/6. Source/repos/referral-platform-backend/src/models/reward").Reward
+      > &
+        import("e:/6. Source/repos/referral-platform-backend/src/models/reward").Reward & {
+          _id: mongoose.Types.ObjectId;
+        };
+      campaign: mongoose.Document<unknown, {}, Referral> &
+        Referral & { _id: mongoose.Types.ObjectId };
+      referrer: any;
+      owner: mongoose.Document<unknown, {}, User> &
+        User & { _id: mongoose.Types.ObjectId };
+    }
+> => {
   const reward = await RewardModel.findById(rewardId);
   if (!reward) {
     return new Error("Reward not found");
+  }
+  if (reward.isUsed || isBefore(new Date(reward.expireDate), new Date())) {
+    return new Error("This reward had been used or expired.");
   }
   const campaign = await ReferralModel.findById(reward.referralProgramId);
   if (!campaign) {
@@ -83,7 +106,16 @@ const getRewardById = async (rewardId: string) => {
     return new Error("Campaign expired");
   }
 
-  return { reward, campaign };
+  let referrer = undefined;
+  if (reward.referredByUserId) {
+    referrer = await UserModel.findById(reward.referredByUserId);
+    if (!referrer) {
+      return new Error("Referrer not found");
+    }
+  }
+
+  const rewardOwner = await UserModel.findById(reward.userId);
+  return { reward, campaign, referrer, owner: rewardOwner };
 };
 
 router.get(
@@ -111,9 +143,7 @@ router.get(
       if (result instanceof Error) {
         return res.status(400).json({ error: result.message });
       }
-      res
-        .status(200)
-        .json({ reward: result.reward, campaign: result.campaign });
+      res.status(200).json({ ...result });
     } catch (error) {
       res.status(500).json({
         error: "An error occurred while retrieving the referral program.",
@@ -138,9 +168,8 @@ router.get(
       if (result instanceof Error) {
         return res.status(400).json({ error: result.message });
       }
-      res
-        .status(200)
-        .json({ reward: result.reward, campaign: result.campaign });
+      console.log(result);
+      res.status(200).json({ ...result });
     } catch (error) {
       res.status(500).json({
         error: "An error occurred while retrieving the referral program.",
@@ -173,7 +202,7 @@ router.post(
         return res.status(400).json({ error: "Invalid reward data." });
       }
 
-      if (reward.isUsed || reward.isExpired) {
+      if (reward.isUsed || isBefore(new Date(reward.expireDate), new Date())) {
         return res
           .status(400)
           .json({ error: "This reward had been used or expired." });
@@ -208,52 +237,109 @@ router.post(
   }
 );
 
-// router.post(
-//   "/saveReward",
-//   verifyToken,
-//   authorize(["CUSTOMER"]),
-//   async (req: Request, res, next) => {
-//     try {
-//       const formData: Outlet = req.body;
-//       if (!formData.name || !formData.address) {
-//         return res.status(400).json({ error: "Required field is missing." });
-//       }
+router.post(
+  "/completeRedeem",
+  verifyToken,
+  authorize(["BUSINESS_OWNER", "BUSINESS_STAFF"]),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { rewardId, outletId } = req.body;
+      if (!rewardId || !outletId) {
+        return res.status(400).json({ error: "Missing required field(s)." });
+      }
+      const rewardInfo = await getRewardById(rewardId);
+      if (rewardInfo instanceof Error) {
+        return res.status(400).json({ error: rewardInfo.message });
+      }
 
-//       // Check if an outlet with the same user and name (case-insensitive) already exists
-//       const existingOutlet = await OutletModel.findOne({
-//         userId: req.user._id,
-//         name: { $regex: new RegExp(`^${formData.name}$`, "i") },
-//       });
+      const session = await mongoose.startSession();
+      session.startTransaction();
 
-//       if (existingOutlet) {
-//         return res
-//           .status(409)
-//           .json({ error: "Outlet with same name already exists." });
-//       }
+      const checkIn = new CheckInModel({
+        outletId: outletId,
+        userId: rewardInfo.owner._id,
+        consents: [],
+        visitCount: 1,
+      });
+      await checkIn.save({ session });
 
-//       // Create a new outlet
-//       const newOutlet = new OutletModel({
-//         userId: req.user._id,
-//         name: formData.name,
-//         address: formData.address ?? "",
-//         phone: formData.phone,
-//         desc: formData.desc,
-//         imageUrl: formData.imageUrl,
-//       });
+      //Update
+      await RewardModel.findOneAndUpdate(
+        { _id: rewardId },
+        {
+          isUsed: true,
+          usePlace: outletId,
+          useDate: new Date(),
+        }
+      ).session(session);
 
-//       await newOutlet.save();
+      await UserModel.findOneAndUpdate(
+        { _id: rewardInfo.referrer._id },
+        {
+          point:
+            rewardInfo.referrer.point + rewardInfo.campaign.referrerRewardPoint,
+        }
+      ).session(session);
 
-//       res
-//         .status(201)
-//         .json({ message: "Outlet created successfully.", outlet: newOutlet });
-//     } catch (error) {
-//       res
-//         .status(500)
-//         .json({ error: "An error occurred while creating the outlet." });
-//       console.error("Error creating outlet:", error);
-//       next(error);
-//     }
-//   }
-// );
+      // Commit the transaction
+      await session.commitTransaction();
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Error redeem:", error);
+      return res.status(500).json({ error: "An error occurred while redeem." });
+    }
+  }
+);
+
+router.post(
+  "/saveReward",
+  verifyToken,
+  authorize(["CUSTOMER"]),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { campaignId, referrerId, code } = req.body;
+      if (!campaignId || !referrerId || !code) {
+        return res.status(400).json({ error: "RewardId is required." });
+      }
+
+      const evaluateCode = generateCode(
+        campaignId,
+        req.userId.toString(),
+        referrerId
+      );
+      if (code !== evaluateCode) {
+        return res.status(400).json({ error: "Invalid reward data." });
+      }
+      const newReward = new RewardModel({
+        userId: req.userId,
+        referralProgramId: campaignId,
+        referredByUserId: referrerId,
+      });
+      const refProg = await ReferralModel.findById(campaignId);
+      if (!refProg) {
+        return res.status(404).json({ error: "Campaign not found." });
+      }
+
+      const currentDate = new Date();
+      const futureDate = add(currentDate, { days: refProg.daysToRedeem });
+      if (refProg.endDate === undefined) {
+        newReward.expireDate = add(currentDate, { days: refProg.daysToRedeem });
+      } else {
+        const progEndDate = new Date(refProg.endDate);
+        newReward.expireDate = isBefore(futureDate, progEndDate)
+          ? futureDate
+          : progEndDate;
+      }
+
+      await newReward.save();
+      return res.status(201).json({ message: "success" });
+    } catch (error) {
+      console.error("Error requesting redeem:", error);
+      return res
+        .status(500)
+        .json({ error: "An error occurred while requesting redeem." });
+    }
+  }
+);
 
 export default router;

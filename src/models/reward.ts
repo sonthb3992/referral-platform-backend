@@ -7,7 +7,6 @@ export interface Reward extends mongoose.Document {
   referredByUserId?: ObjectId; //ID of userA
   expireDate: Date;
   isUsed: boolean;
-  isExpired: boolean;
   useDate?: Date;
   usePlace?: ObjectId;
 }
@@ -32,6 +31,18 @@ const rewardSchema = new Schema({
   expireDate: {
     type: Date,
     required: true,
+  },
+  isUsed: {
+    type: Boolean,
+    default: false,
+  },
+  useDate: {
+    type: Date,
+    required: false,
+  },
+  usePlace: {
+    type: Schema.ObjectId,
+    ref: "Outlet",
   },
 });
 
