@@ -24,6 +24,7 @@ const port = process.env.PORT || 3001;
 
 const allowedOrigins = [
   "https://caffino-referral-platform.web.app",
+  "https://caffino-reward.web.app",
   "http://localhost:3000",
   "http://localhost:4000",
 ];

@@ -14,26 +14,7 @@ import OutletModel from "../models/outlet";
 
 const router = express.Router();
 
-const getRewardById = async (
-  rewardId: string
-): Promise<
-  | Error
-  | {
-      reward: mongoose.Document<
-        unknown,
-        {},
-        import("e:/6. Source/repos/referral-platform-backend/src/models/reward").Reward
-      > &
-        import("e:/6. Source/repos/referral-platform-backend/src/models/reward").Reward & {
-          _id: mongoose.Types.ObjectId;
-        };
-      campaign: mongoose.Document<unknown, {}, Referral> &
-        Referral & { _id: mongoose.Types.ObjectId };
-      referrer: any;
-      owner: mongoose.Document<unknown, {}, User> &
-        User & { _id: mongoose.Types.ObjectId };
-    }
-> => {
+const getRewardById = async (rewardId: string): Promise<Error | any> => {
   const reward = await RewardModel.findById(rewardId);
   if (!reward) {
     return new Error("Reward not found");
