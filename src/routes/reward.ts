@@ -39,11 +39,12 @@ const getRewardById = async (rewardId: string): Promise<Error | any> => {
     return new Error("Campaign expired");
   }
 
-  const checkIn = CheckInModel.findOne({
+  const checkIn = await CheckInModel.findOne({
     businessId: campaign.userId,
     userId: reward.userId,
   });
   if (checkIn) {
+    console.log({ checkIn });
     return new Error("Only applied to new customers");
   }
 
@@ -156,7 +157,6 @@ router.get(
       if (result instanceof Error) {
         return res.status(400).json({ error: result.message });
       }
-      console.log(result);
       res.status(200).json({ ...result });
     } catch (error) {
       res.status(500).json({

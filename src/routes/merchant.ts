@@ -64,19 +64,36 @@ router.post(
         return res.status(400).json({ error: "Required field is missing." });
       }
 
-      // Check if an outlet with the same user and name (case-insensitive) already exists
-      const existingOutlet = await OutletModel.findOne({
+      //Update existing outlet
+      if (formData._id) {
+        const existingOutlet = await OutletModel.findById(formData._id);
+        if (!existingOutlet) {
+          return res.status(404).json({ error: "Outlet not found." });
+        }
+        existingOutlet.name = formData.name;
+        existingOutlet.address = formData.address ?? "";
+        existingOutlet.phone = formData.phone;
+        existingOutlet.desc = formData.desc;
+        existingOutlet.imageUrl = formData.imageUrl;
+        await existingOutlet.save();
+        return res.status(200).json({
+          message: "Outlet updated successfully.",
+          outlet: existingOutlet,
+        });
+      }
+
+      // Find the outlet with the same user and name (case-insensitive)
+      const sameNameOutlet = await OutletModel.findOne({
         userId: req.user._id,
         name: { $regex: new RegExp(`^${formData.name}$`, "i") },
       });
 
-      if (existingOutlet) {
+      if (sameNameOutlet) {
         return res
           .status(409)
-          .json({ error: "Outlet with same name already exists." });
+          .json({ error: "Outlet with the same name existed." });
       }
 
-      // Create a new outlet
       const newOutlet = new OutletModel({
         userId: req.user._id,
         name: formData.name,
@@ -87,15 +104,45 @@ router.post(
       });
 
       await newOutlet.save();
+      return res.status(201).json({
+        message: "Outlet created successfully.",
+        outlet: newOutlet,
+      });
+    } catch (error) {
+      res.status(500).json({
+        error: "An error occurred while creating/updating the outlet.",
+      });
+      console.error("Error creating/updating outlet:", error);
+      next(error);
+    }
+  }
+);
 
-      res
-        .status(201)
-        .json({ message: "Outlet created successfully.", outlet: newOutlet });
+router.delete(
+  "/outlet/:outletId",
+  verifyToken,
+  authorize(businessOwnerAuthorizedRoles),
+  async (req: Request, res, next) => {
+    const outletId = req.params.outletId;
+    try {
+      if (!outletId) {
+        return res.status(404).json({ error: "Invalid outlet id." });
+      }
+      // Use your OutletModel or database query to find and delete the outlet
+      const deletedOutlet = await OutletModel.findByIdAndRemove(outletId);
+
+      if (!deletedOutlet) {
+        // If the outlet with the given ID doesn't exist
+        return res.status(404).json({ error: "Outlet not found" });
+      }
+
+      // Respond with a success message
+      return res.status(200).json({ message: "Outlet deleted successfully" });
     } catch (error) {
       res
         .status(500)
-        .json({ error: "An error occurred while creating the outlet." });
-      console.error("Error creating outlet:", error);
+        .json({ error: "An error occurred while deleting outlet" });
+      console.error("Error fetching outlets:", error);
       next(error);
     }
   }
