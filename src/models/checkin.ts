@@ -11,6 +11,11 @@ export interface CheckIn extends mongoose.Document {
     ref: "Outlet";
     required: true;
   };
+  businessId: {
+    type: Schema.Types.ObjectId;
+    ref: "User";
+    required: true;
+  };
   visitCount: number;
   status: "PENDING" | "APPROVED" | "REJECTED";
   consents: {
@@ -30,6 +35,11 @@ const checkInSchema: Schema<CheckIn> = new Schema<CheckIn>(
     outletId: {
       type: Schema.Types.ObjectId,
       ref: "Outlet",
+      required: true,
+    },
+    businessId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
       required: true,
     },
     visitCount: { type: Number, default: 0 },

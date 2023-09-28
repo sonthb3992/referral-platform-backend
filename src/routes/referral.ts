@@ -1,17 +1,12 @@
 import express, { Request, Response, NextFunction } from "express";
-import admin from "../firebase/admin";
-import { UserModel, customerAuthorizedRoles } from "../models/user";
+import { UserModel } from "../models/user";
 import ReferralModel, {
   Referral,
   ReferralProgramQRCode,
 } from "../models/referral";
 import { verifyToken, authorize } from "../middlewares/authentication";
-import { MD5 } from "crypto-js";
-import CampaignModel from "../models/campaign";
 import RewardModel from "../models/reward";
-import add from "date-fns/add";
 import { isBefore } from "date-fns";
-import { tr } from "date-fns/locale";
 import { generateCode } from "../utils/code";
 
 const router = express.Router();
@@ -249,76 +244,5 @@ router.get(
     }
   }
 );
-
-// router.get(
-//   "/hasUserJoined/:progId",
-//   verifyToken,
-//   authorize(["CUSTOMER"]),
-//   async (req: Request, res, next) => {
-//     try {
-//       const progId = req.params.progId;
-//       const userId = req.userId;
-
-//       if (!userId || !progId) {
-//         return res.status(400).json({ error: "Required field is missing." });
-//       }
-//       const prog = await ReferralModel.findById(progId);
-//       if (!prog) {
-//         return res.status(404).json({ error: "Campaign not found." });
-//       }
-
-//       const rewardProgram = await RewardModel.findOne({
-//         referralProgramId: progId,
-//         userId: userId,
-//       });
-
-//       if (rewardProgram) {
-//         return res.status(200).json({ joined: true });
-//       }
-//       return res.status(200).json({ joined: false, campaign: prog });
-//     } catch (error) {
-//       res.status(500).json({
-//         error: "An error occurred while retrieving the referral program.",
-//       });
-//       console.error("Error retrieving referral program:", error);
-//       next(error);
-//     }
-//   }
-// );
-
-// router.get(
-//   "/referral/:referralId",
-//   verifyToken,
-//   authorize(customerAuthorizedRoles),
-//   async (req: Request, res: Response, next: NextFunction) => {
-//     // Destructure the fields from the request body
-//     const { referralId } = req.params as { referralId: string };
-
-//     try {
-//       // Check validate the referralId
-//       const referral = await ReferralModel.findById(referralId);
-//       if (!referral) {
-//         return res.status(400).json({
-//           message: "Invalid Referral Id",
-//         });
-//       }
-
-//       const campaign = await CampaignModel.findById(referral.campaignId);
-//       if (!campaign) {
-//         return res.status(400).json({
-//           message: "Invalid Campaign Id",
-//         });
-//       }
-
-//       res.status(200).json({
-//         message: "Referral retrieved successfully",
-//         referral: referral,
-//         campaign: campaign,
-//       });
-//     } catch (err) {
-//       next(err);
-//     }
-//   }
-// );
 
 export default router;

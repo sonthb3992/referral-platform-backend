@@ -3,6 +3,7 @@ import { Request } from "../types/custom";
 import { authorize, verifyToken } from "../middlewares/authentication";
 import CheckInModel, { CheckIn } from "../models/checkin";
 import { UserModel } from "../models/user";
+import OutletModel from "../models/outlet";
 
 const router = express.Router();
 
@@ -17,12 +18,18 @@ router.post(
         return res.status(400).json({ error: "Required fields are missing." });
       }
 
+      const outlet = await OutletModel.findById(formData.outletId);
+      if (!outlet) {
+        return res.status(404).json({ error: "Outlet not found." });
+      }
       // Define the filter to find the existing record
       const filter = { userId: req.userId, outletId: formData.outletId };
+
       // Define the update to apply or create a new record
       const update = {
         userId: req.userId,
         outletId: formData.outletId,
+        businessId: outlet.userId,
         consents: formData.consents ?? [],
       };
 
