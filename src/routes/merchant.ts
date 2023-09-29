@@ -173,6 +173,29 @@ router.get(
   }
 );
 
+router.get(
+  "/outlet/newest",
+  verifyToken,
+  authorize(["CUSTOMER"]),
+  async (req: Request, res, next) => {
+    try {
+      // Retrieve all outlets for the authenticated user
+      const outlets = await OutletModel.find()
+        .sort({ updatedAt: -1 }) // Sort in descending order by updatedAt
+        .limit(5) // Limit the results to 5 documents
+        .exec();
+
+      res.status(200).json({ outlets });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ error: "An error occurred while fetching outlets." });
+      console.error("Error fetching outlets:", error);
+      next(error);
+    }
+  }
+);
+
 router.get("/outletName/:outletId", async (req, res, next) => {
   try {
     const outletId = req.params.outletId;

@@ -12,6 +12,7 @@ import imageRoute from "./routes/imageProxy";
 import rewardRoute from "./routes/reward";
 import withdrawalRoute from "./routes/withdraw";
 import redemptionRoute from "./routes/redemption";
+import transactionRoute from "./routes/transaction";
 import cookieParser from "cookie-parser";
 import fs from "fs";
 import https from "https";
@@ -64,6 +65,7 @@ app.use("/api", imageRoute);
 app.use("/api", rewardRoute);
 app.use("/api", withdrawalRoute);
 app.use("/api", redemptionRoute);
+app.use("/api", transactionRoute);
 console.log(process.cwd());
 
 const certificate = fs.readFileSync("src/ssl/certificate.pem", "utf8");

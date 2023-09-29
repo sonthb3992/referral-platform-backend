@@ -323,7 +323,7 @@ router.post(
 
         // Create a transaction entry
         const transUserA = new TransactionModel({
-          userId: rewardInfo.owner._id,
+          userId: item.userId,
           outletId: outletId,
           pointDelta: rewardInfo.campaign.referrerRewardPoint,
           content: `Earn points from referral program ${rewardInfo.campaign.name}`,
