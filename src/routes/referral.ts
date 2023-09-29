@@ -8,6 +8,7 @@ import { verifyToken, authorize } from "../middlewares/authentication";
 import RewardModel from "../models/reward";
 import { isBefore } from "date-fns";
 import { generateCode } from "../utils/code";
+import CheckInModel from "../models/checkin";
 
 const router = express.Router();
 
@@ -157,11 +158,22 @@ router.post(
         return res.status(400).json({ error: "The campaign has ended." });
       }
 
+      const checkIn = await CheckInModel.findOne({
+        businessId: refProg.userId,
+        userId: req.userId,
+      });
+      if (checkIn) {
+        return res
+          .status(400)
+          .json({ error: "Only applied to new customers." });
+      }
+
       //Check if the user has claimed this reward before
       const existing = await RewardModel.findOne({
         userId: req.userId,
         referralProgramId: qrCode.campaignId,
       });
+
       if (existing) {
         return res
           .status(400)

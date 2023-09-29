@@ -15,7 +15,7 @@ const transactionSchema = new Schema({
   },
   outletId: {
     type: Schema.ObjectId,
-    required: true,
+    required: false,
     ref: "Outlet",
   },
   pointDelta: {

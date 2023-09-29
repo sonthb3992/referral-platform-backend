@@ -6,14 +6,8 @@ export interface Referral extends Document {
   description?: string;
   termAndConditions?: string;
   referrerRewardPoint: number;
-  referredRewardType: "POINT" | "DISCOUNT" | "FREE_ITEM";
-  referredRewardPoint?: number;
-  referredDiscountPercentage?: number;
-  referredFreeItem?: {
-    name: string;
-    realValue: number;
-    image: string;
-  };
+  referredRewardType: "POINT" | "DISCOUNT_PERCENT" | "DISCOUNT_AMOUNT";
+  referredRewardValue: number;
   isActived: boolean;
   maxParticipants?: number;
   participantsCount: number;
@@ -22,10 +16,6 @@ export interface Referral extends Document {
   startDate: Date;
   endDate?: Date;
   minSpend?: number;
-  timestamps: {
-    createdAt: Date;
-    updatedAt: Date;
-  };
 }
 
 export interface ReferralProgramQRCode {
@@ -55,19 +45,12 @@ const referralSchema = new Schema({
   },
   referredRewardType: {
     type: String,
-    enum: ["POINT", "DISCOUNT", "FREE_ITEM"],
+    enum: ["POINT", "DISCOUNT_PERCENT", "DISCOUNT_AMOUNT"],
     required: true,
   },
-  referredRewardPoint: {
+  referredRewardValue: {
     type: Number,
-  },
-  referredDiscountPercentage: {
-    type: Number,
-  },
-  referredFreeItem: {
-    name: String,
-    realValue: Number,
-    image: String,
+    required: true,
   },
   isActived: {
     type: Boolean,
@@ -98,16 +81,6 @@ const referralSchema = new Schema({
   },
   minSpend: {
     type: Number,
-  },
-  timestamps: {
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now,
-    },
   },
 });
 

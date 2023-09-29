@@ -2,63 +2,22 @@ import express, { Request, Response, NextFunction, request } from "express";
 import { User, UserModel } from "../models/user";
 import ReferralModel, { Referral } from "../models/referral";
 import { verifyToken, authorize } from "../middlewares/authentication";
-import RewardModel from "../models/reward";
-import mongoose from "mongoose";
-import { getOutletOfUserId } from "./merchant";
+import RewardModel, {
+  Reward,
+  RewardInfo,
+  RewardItem,
+  getRewardInfo,
+} from "../models/reward";
+import mongoose, { ClientSession } from "mongoose";
 import RedeemRequestModel from "../models/redeemRequest";
-import { add, addMinutes, isBefore } from "date-fns";
+import { add, addDays, addMinutes, isBefore } from "date-fns";
 import { generateCode } from "../utils/code";
 import CheckInModel from "../models/checkin";
 import TransactionModel from "../models/transaction";
-import OutletModel from "../models/outlet";
+import OutletModel, { Outlet } from "../models/outlet";
+import RedemptionModel, { Redemption } from "../models/redemption";
 
 const router = express.Router();
-
-const getRewardById = async (rewardId: string): Promise<Error | any> => {
-  const reward = await RewardModel.findById(rewardId);
-  if (!reward) {
-    return new Error("Reward not found");
-  }
-  if (reward.isUsed || isBefore(new Date(reward.expireDate), new Date())) {
-    return new Error("This reward had been used or expired.");
-  }
-  const campaign = await ReferralModel.findById(reward.referralProgramId);
-  if (!campaign) {
-    return new Error("Campaign not found");
-  }
-  if (!campaign.isActived) {
-    return new Error("Campaign disabled");
-  }
-  if (
-    campaign.maxParticipants &&
-    campaign.maxParticipants <= campaign.participantsCount
-  ) {
-    return new Error("Max participants reached");
-  }
-  if (campaign.endDate && isBefore(new Date(campaign.endDate), new Date())) {
-    return new Error("Campaign expired");
-  }
-
-  const checkIn = await CheckInModel.findOne({
-    businessId: campaign.userId,
-    userId: reward.userId,
-  });
-  if (checkIn) {
-    console.log({ checkIn });
-    return new Error("Only applied to new customers");
-  }
-
-  let referrer = undefined;
-  if (reward.referredByUserId) {
-    referrer = await UserModel.findById(reward.referredByUserId);
-    if (!referrer) {
-      return new Error("Referrer not found");
-    }
-  }
-
-  const rewardOwner = await UserModel.findById(reward.userId);
-  return { reward, campaign, referrer, owner: rewardOwner };
-};
 
 router.get(
   "/reward",
@@ -66,37 +25,15 @@ router.get(
   authorize(["CUSTOMER"]),
   async (req: Request, res, next) => {
     try {
+      if (!req.userId) {
+        return res.status(401).json({ error: "Unauthorized." });
+      }
+
       var query = { userId: req.userId, isUsed: false };
       const rewards = await RewardModel.find(query);
 
-      if (!rewards) {
-        return res.status(400).json({ error: "Promotion program not found." });
-      }
-      const progPromises = rewards.map(async (reward) => {
-        const prog = await ReferralModel.findById(reward.referralProgramId);
-        return {
-          reward: reward,
-          campaign: prog,
-        };
-      });
-
-      const rewardsWithCampaign = await Promise.all(progPromises);
-      const outletPromises = rewardsWithCampaign.map(
-        async (rewardsWithCampaign) => {
-          const outlets = await getOutletOfUserId(
-            rewardsWithCampaign.campaign.userId
-          );
-          return {
-            reward: rewardsWithCampaign.reward,
-            campaign: rewardsWithCampaign.campaign,
-            outlets: outlets,
-          };
-        }
-      );
-
-      const result = await Promise.all(outletPromises);
-
-      res.status(200).json({ result });
+      console.log(rewards);
+      res.status(200).json({ rewards });
     } catch (error) {
       res.status(500).json({
         error: "An error occurred while retrieving the referral program.",
@@ -128,7 +65,7 @@ router.get(
           return res.status(400).json({ error: "Code is expired." });
         }
       }
-      const result = await getRewardById(request.rewardId.toString());
+      const result = await getRewardInfo(request.rewardId.toString());
       if (result instanceof Error) {
         return res.status(400).json({ error: result.message });
       }
@@ -146,14 +83,14 @@ router.get(
 router.get(
   "/reward/:rewardId",
   verifyToken,
-  authorize(["BUSINESS_OWNER", "BUSINESS_STAFF", "ADMIN"]),
+  authorize(["CUSTOMER", "BUSINESS_OWNER", "BUSINESS_STAFF", "ADMIN"]),
   async (req: Request, res, next) => {
     try {
       const rewardId = req.params.rewardId;
       if (!rewardId) {
         return res.status(400).json({ error: "Required field is missing." });
       }
-      const result = await getRewardById(rewardId);
+      const result = await getRewardInfo(rewardId);
       if (result instanceof Error) {
         return res.status(400).json({ error: result.message });
       }
@@ -244,16 +181,46 @@ router.post(
       if (code !== evaluateCode) {
         return res.status(400).json({ error: "Invalid reward data." });
       }
+
+      const campaign = await ReferralModel.findById(campaignId);
+      if (!campaign) {
+        return res.status(404).json({ error: "Campaign not found." });
+      }
+
+      const checkIn = await CheckInModel.findOne({
+        businessId: campaign.userId,
+        userId: req.userId.toString(),
+      });
+      if (checkIn) {
+        console.log({ checkIn });
+        return res
+          .status(400)
+          .json({ error: "Applied to new customers only." });
+      }
+
       const newReward = new RewardModel({
         userId: req.userId,
-        referralProgramId: campaignId,
+        campaignId: campaignId,
         referredByUserId: referrerId,
       });
       const refProg = await ReferralModel.findById(campaignId);
       if (!refProg) {
         return res.status(404).json({ error: "Campaign not found." });
       }
-
+      let rewards: RewardItem[] = [];
+      rewards.push({
+        rewardType: "POINT",
+        source: "REFERRER",
+        userId: referrerId,
+        rewardValue: refProg.referrerRewardPoint,
+      });
+      rewards.push({
+        rewardType: refProg.referredRewardType,
+        source: "REFERRED",
+        userId: req.userId as any,
+        rewardValue: refProg.referredRewardValue,
+      });
+      newReward.rewards = rewards;
       const currentDate = new Date();
       const futureDate = add(currentDate, { days: refProg.daysToRedeem });
       if (refProg.endDate === undefined) {
@@ -276,6 +243,36 @@ router.post(
   }
 );
 
+const updateCheckIn = async (
+  session: ClientSession,
+  rewardInfo: RewardInfo,
+  outlet: Outlet
+) => {
+  const filter = {
+    userId: rewardInfo.owner._id,
+    outletId: outlet._id,
+  };
+
+  const update = {
+    $inc: { visitCount: 1 },
+    $setOnInsert: {
+      outletId: outlet._id,
+      userId: rewardInfo.owner._id,
+      businessId: outlet.userId,
+      consents: [],
+      visitCount: 1,
+    },
+  };
+
+  const options = {
+    upsert: true,
+    new: true, // Return the updated document if it exists, or the new one if created
+    session: session,
+  };
+
+  await CheckInModel.findOneAndUpdate(filter, update, options);
+};
+
 router.post(
   "/redeem/complete",
   verifyToken,
@@ -286,7 +283,7 @@ router.post(
       if (!rewardId || !outletId) {
         return res.status(400).json({ error: "Missing required field(s)." });
       }
-      const rewardInfo = await getRewardById(rewardId);
+      const rewardInfo = await getRewardInfo(rewardId);
       if (rewardInfo instanceof Error) {
         return res.status(400).json({ error: rewardInfo.message });
       }
@@ -298,14 +295,7 @@ router.post(
       const session = await mongoose.startSession();
       session.startTransaction();
 
-      const checkIn = new CheckInModel({
-        outletId: outletId,
-        userId: rewardInfo.owner._id,
-        businessId: outlet.userId,
-        consents: [],
-        visitCount: 1,
-      });
-      await checkIn.save({ session });
+      await updateCheckIn(session, rewardInfo, outlet);
 
       //Update
       await RewardModel.findOneAndUpdate(
@@ -318,38 +308,104 @@ router.post(
       ).session(session);
 
       //Add points to user A
-      await UserModel.findOneAndUpdate(
-        { _id: rewardInfo.referrer._id },
-        {
-          point:
-            rewardInfo.referrer.point + rewardInfo.campaign.referrerRewardPoint,
-        }
-      ).session(session);
-      const transUserA = new TransactionModel({
-        userId: rewardInfo.owner._id,
-        outletId: outletId,
-        pointDelta: rewardInfo.campaign.referrerRewardPoint,
-        content: `Earn points from referral program ${rewardInfo.campaign.name}`,
-      });
-      await transUserA.save({ session });
+      const rewardItems = (rewardInfo.reward as Reward).rewards;
 
-      //Charge points from store's balance
-      await UserModel.findOneAndUpdate(
-        { _id: rewardInfo.campaign.userId },
-        {
-          point:
-            rewardInfo.referrer.point - rewardInfo.campaign.referrerRewardPoint,
+      for (const item of rewardItems) {
+        if (item.rewardType !== "POINT") {
+          continue; // Skip non-POINT rewards
         }
-      ).session(session);
-      const transShop = new TransactionModel({
-        userId: rewardInfo.campaign.userId,
-        outletId: outletId,
-        pointDelta: -rewardInfo.campaign.referrerRewardPoint,
-        content: `Redeem points for referral program ${rewardInfo.campaign.name}`,
-      });
-      await transShop.save({ session });
+        await UserModel.findOneAndUpdate(
+          { _id: item.userId },
+          {
+            $inc: { point: item.rewardValue },
+          }
+        ).session(session);
+
+        // Create a transaction entry
+        const transUserA = new TransactionModel({
+          userId: rewardInfo.owner._id,
+          outletId: outletId,
+          pointDelta: rewardInfo.campaign.referrerRewardPoint,
+          content: `Earn points from referral program ${rewardInfo.campaign.name}`,
+        });
+
+        await transUserA.save({ session });
+
+        //Charge points from store's balance
+        await UserModel.findOneAndUpdate(
+          { _id: rewardInfo.campaign.userId },
+          {
+            $inc: {
+              point: -item.rewardValue,
+            },
+          }
+        ).session(session);
+        const transShop = new TransactionModel({
+          userId: rewardInfo.campaign.userId,
+          outletId: outletId,
+          pointDelta: -item.rewardValue,
+          content: `Redeem points for referral program ${rewardInfo.campaign.name}`,
+        });
+        await transShop.save({ session });
+      }
 
       // Commit the transaction
+      await session.commitTransaction();
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Error redeem:", error);
+      return res.status(500).json({ error: "An error occurred while redeem." });
+    }
+  }
+);
+
+router.post(
+  "/voucher",
+  verifyToken,
+  authorize(["CUSTOMER"]),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { redemptionId } = req.body;
+
+      if (!redemptionId) {
+        return res.status(400).json({ error: "Missing required field(s)." });
+      }
+      const redemption = await RedemptionModel.findById(redemptionId);
+      if (!redemption) {
+        return res.status(404).json({ error: "Redemption not found." });
+      }
+      const session = await mongoose.startSession();
+      session.startTransaction();
+      //Update
+      //Decrease points to user A
+      await UserModel.findOneAndUpdate(
+        { _id: req.userId },
+        {
+          $inc: { point: -redemption.point },
+        }
+      ).session(session);
+
+      const newReward = new RewardModel({
+        userId: req.userId,
+        expireDate: addDays(new Date(), 30),
+        redemptionId: redemptionId,
+      });
+
+      let rewards: RewardItem[] = [];
+      rewards.push({
+        rewardType: "DISCOUNT_AMOUNT",
+        source: "REDEEM",
+        userId: req.userId as any,
+        rewardValue: redemption.value,
+      });
+      newReward.rewards = rewards;
+      await newReward.save({ session });
+      const transaction = new TransactionModel({
+        userId: req.userId,
+        pointDelta: -redemption.point,
+        content: "Vourcher exchange",
+      });
+      await transaction.save({ session });
       await session.commitTransaction();
       return res.status(200).json({ success: true });
     } catch (error) {
